@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#12161c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Which Card?</title>
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface-2:#eef0f4; --line:#dcdfe6;
+  --text:#12161c; --muted:#666e7a; --accent:#2b6cb0; --win:#1a7f4b; --warn:#a05a00;
+  --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.05);
+  --ink:#1c2430; --onink:#ffffff; --winbg:#e4f5ec; --accbg:#e7f0fa;
+  --focus:rgba(43,108,176,.16);
+}
+/* Dark tokens apply when the OS asks for dark and the reader hasn't overridden it... */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#12161c; --surface:#1b212a; --surface-2:#232b36; --line:#2f3846;
+    --text:#e8ecf2; --muted:#98a2b0; --accent:#6aa9e8; --win:#4ecb8b; --warn:#e0a95c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    --ink:#e8ecf2; --onink:#12161c; --winbg:#1c3a2c; --accbg:#1b2c3f;
+    --focus:rgba(106,169,232,.22);
+  }
+}
+/* ...and again when the reader explicitly picks dark, whatever the OS says. */
+:root[data-theme="dark"]{
+    --bg:#12161c; --surface:#1b212a; --surface-2:#232b36; --line:#2f3846;
+    --text:#e8ecf2; --muted:#98a2b0; --accent:#6aa9e8; --win:#4ecb8b; --warn:#e0a95c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    --ink:#e8ecf2; --onink:#12161c; --winbg:#1c3a2c; --accbg:#1b2c3f;
+    --focus:rgba(106,169,232,.22);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 72px);
+  -webkit-font-smoothing:antialiased;
+}
+header{padding:14px 16px 8px}
+h1{margin:0;font-size:20px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+main{padding:0 12px}
+section{display:none}
+section.on{display:block}
+
+/* ---- bottom tab bar ---- */
+nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  display:grid;grid-template-columns:repeat(3,1fr);
+  background:var(--surface);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  appearance:none;border:0;background:none;color:var(--muted);
+  font:600 12px/1 -apple-system,sans-serif;padding:11px 4px 13px;cursor:pointer;
+}
+nav button .ic{display:block;font-size:19px;margin-bottom:4px;font-weight:400}
+nav button.on{color:var(--accent)}
+
+/* ---- cards / rows ---- */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  margin:10px 0;box-shadow:var(--shadow);overflow:hidden;
+}
+.row{
+  display:flex;align-items:center;gap:12px;padding:13px 14px;
+  cursor:pointer;user-select:none;
+}
+.row .emo{font-size:22px;width:26px;text-align:center;flex:none}
+.row .lab{flex:1;min-width:0}
+.row .lab b{display:block;font-size:15px;font-weight:600}
+.row .lab s{display:block;text-decoration:none;color:var(--muted);font-size:12.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.pct{flex:none;display:flex;flex-direction:column;align-items:flex-end;
+  font-variant-numeric:tabular-nums;line-height:1.15}
+.pct b{font-size:19px;font-weight:700;color:var(--win)}
+.pct s{text-decoration:none;font-size:11.5px;color:var(--muted);margin-top:2px}
+.chev{color:var(--muted);font-size:13px;flex:none;transition:transform .15s}
+.open .chev{transform:rotate(90deg)}
+
+.detail{display:none;padding:0 14px 12px;border-top:1px solid var(--line)}
+.open .detail{display:block}
+.rank{display:flex;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.rank:last-of-type{border-bottom:0}
+.rank .n{color:var(--muted);width:16px;flex:none;font-size:12px}
+.rank .nm{flex:1}
+.rank .v{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;
+  text-align:right;line-height:1.2}
+.rank .v b{color:var(--text);font-size:14px}
+.rank.top .nm{font-weight:600}
+.rank.top .v b{color:var(--win)}
+.raw{color:var(--muted);font-size:12px}
+.q{display:inline-block;color:var(--warn);font-weight:700;font-size:13px;
+   vertical-align:top;margin-left:1px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;padding:2px 7px;border-radius:999px;margin-left:6px;
+  background:var(--warn);color:#fff;vertical-align:2px}
+.tag.ok{background:var(--win)}
+.nohit{color:var(--muted);font-size:13.5px;padding:4px 2px}
+.perk{background:var(--surface-2);border-radius:11px;padding:11px 13px;margin-top:10px;
+  border-left:3px solid var(--muted)}
+.perk.over{border-left-color:var(--win);background:var(--surface)}
+.perk .pt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted)}
+.perk.over .pt{color:var(--win)}
+.perk .pn{font-size:15px;font-weight:700;margin:3px 0 4px}
+.perk .pb{font-size:13px;line-height:1.45;color:var(--muted)}
+ol.steps{margin:8px 0 0;padding-left:20px}
+ol.steps li{font-size:13.5px;line-height:1.5;margin-bottom:7px;color:var(--text)}
+ol.steps b{color:var(--text)}
+.tw{overflow-x:auto;margin-top:10px}
+table.mt{width:100%;border-collapse:collapse;font-size:13.5px;
+  font-variant-numeric:tabular-nums}
+table.mt th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);padding:0 8px 6px 0;font-weight:700;white-space:nowrap}
+table.mt td{padding:7px 8px 7px 0;border-top:1px solid var(--line);white-space:nowrap}
+table.mt td:last-child,table.mt th:last-child{text-align:right;padding-right:0}
+table.mt tr.cap td{color:var(--muted)}
+table.mt tr.cap b{color:var(--muted)}
+
+.note{
+  background:var(--surface-2);border-radius:9px;padding:9px 11px;margin-top:10px;
+  font-size:13px;line-height:1.4;color:var(--text);
+}
+.note.warn{border-left:3px solid var(--warn)}
+.note b{color:var(--warn)}
+
+/* ---- ask tab ---- */
+.searchbar{position:relative;margin:12px 0 10px}
+.searchbar svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:1.8;
+  stroke-linecap:round;pointer-events:none}
+select,input[type=text],input[type=number]{
+  width:100%;padding:13px 14px;font-size:16px;color:var(--text);
+  background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  appearance:none;-webkit-appearance:none;
+}
+input[type=text]:focus,input[type=number]:focus,select:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--focus)}
+.searchbar input[type=text]{padding-left:42px}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
+  linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 22px,calc(100% - 13px) 22px;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:38px}
+
+.chiprow{display:flex;flex-wrap:wrap;gap:7px;padding:2px 0 4px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 13px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface);font-size:13.5px;font-weight:500;cursor:pointer;
+  transition:background .12s,color .12s;
+}
+.chip .ce{font-size:14px}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--onink);font-weight:600}
+.chip.more{color:var(--accent);font-weight:600;border-style:dashed}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+
+.payrow{display:flex;align-items:center;gap:12px;margin:4px 0 2px;flex-wrap:wrap}
+.paylabel{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);flex:none}
+.seg{display:flex;gap:3px;background:var(--surface-2);border-radius:11px;padding:3px;flex:1;
+  min-width:210px}
+.seg button{
+  flex:1;appearance:none;border:0;background:none;color:var(--muted);cursor:pointer;
+  font:600 12.5px -apple-system,sans-serif;padding:8px 6px;border-radius:9px;
+  white-space:nowrap;transition:background .12s,color .12s;
+}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.toggle{display:flex;align-items:center;gap:10px;padding:12px 2px;font-size:14.5px}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+
+/* ---- the answer ---- */
+.best{background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:14px;margin:14px 0;box-shadow:var(--shadow)}
+.besthead{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;padding:6px 11px;border-radius:999px;
+  background:var(--winbg);color:var(--win)}
+.badge.ret{margin-left:auto;background:var(--accbg);color:var(--accent);
+  font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:0;font-size:12.5px}
+
+.face{border-radius:14px;padding:14px 15px 13px;color:#fff;position:relative;overflow:hidden}
+.face:after{content:"";position:absolute;right:-30px;bottom:-46px;width:150px;height:150px;
+  border-radius:50%;background:rgba(255,255,255,.06)}
+.face .iss{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:rgba(255,255,255,.62)}
+.face .nm{font-size:17px;font-weight:700;margin-top:1px;letter-spacing:-.01em;
+  padding-right:60px;line-height:1.2}
+.face .net{position:absolute;top:13px;right:15px;font-size:13px;font-weight:800;
+  font-style:italic;letter-spacing:.04em;color:rgba(255,255,255,.9)}
+.face .mid{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.face .mchip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.14);
+  border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:700}
+.face .fee{margin-left:auto;font-size:11.5px;color:rgba(255,255,255,.62);
+  font-variant-numeric:tabular-nums}
+.face .bot{display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:10px;
+  border-top:1px solid rgba(255,255,255,.13);font-size:11.5px;color:rgba(255,255,255,.62)}
+.face .ftf{margin-left:auto;background:rgba(255,255,255,.13);border-radius:6px;
+  padding:3px 8px;font-weight:600;color:rgba(255,255,255,.85)}
+
+.mrow{background:var(--surface-2);border-radius:12px;padding:12px 13px;margin-top:11px}
+.mrow .top{display:flex;align-items:baseline;gap:10px}
+.mrow .lbl{font-size:13.5px;color:var(--muted);flex:1}
+.mrow .big{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.mrow .tip{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.4}
+
+.runner{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:13.5px;
+  flex-wrap:wrap}
+.runner .rl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);flex:none}
+.runner .rn{flex:1;font-weight:600;min-width:110px}
+.runner .rv{background:var(--surface-2);border-radius:999px;padding:4px 10px;
+  font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.seeall{display:block;width:100%;margin-top:12px;padding:11px;text-align:center;
+  background:none;border:0;border-top:1px solid var(--line);color:var(--accent);
+  font:600 13.5px -apple-system,sans-serif;cursor:pointer}
+.allcards{display:none;padding-top:2px}
+.allcards.on{display:block}
+
+
+/* ---- my cards tab ---- */
+.ctitle{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer}
+.ctitle b{flex:1;font-size:15px}
+.ctitle .meta{color:var(--muted);font-size:12px}
+.sw{position:relative;width:44px;height:26px;flex:none}
+.sw input{opacity:0;width:100%;height:100%;margin:0;position:relative;z-index:2}
+.sw i{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:.15s}
+.sw i:after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
+  background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked + i{background:var(--win)}
+.sw input:checked + i:after{transform:translateX(18px)}
+.edit{padding:0 14px 14px;border-top:1px solid var(--line)}
+.erow{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px}
+.erow span{flex:1}
+.erow input{width:78px;flex:none;padding:8px;text-align:right;font-size:15px}
+.erow .x{color:var(--muted);font-size:18px;padding:0 4px;cursor:pointer;flex:none}
+.hint{color:var(--muted);font-size:12.5px;margin:6px 0 0;line-height:1.4}
+.btn{
+  display:block;width:100%;padding:13px;margin:9px 0;border-radius:12px;
+  border:1px solid var(--line);background:var(--surface);color:var(--accent);
+  font:600 15px -apple-system,sans-serif;cursor:pointer;text-align:center;
+}
+.btn.solid{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.quiet{color:var(--muted);font-weight:500}
+h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:22px 4px 2px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Which Card?</h1>
+  <div class="sub" id="subline">Tap a category to see the full ranking</div>
+</header>
+
+<main>
+  <!-- ============ CHEAT SHEET ============ -->
+  <section id="tab-sheet" class="on">
+    <div class="note warn" id="unver" style="display:none;margin:10px 0"></div>
+    <div id="sheet"></div>
+    <div class="note" id="valnote"></div>
+    <button class="btn quiet" id="flipval">Switch to 1&cent;-per-point view</button>
+    <button class="btn quiet" id="showall"></button>
+  </section>
+
+  <!-- ============ ASK ============ -->
+  <section id="tab-ask">
+    <div class="searchbar">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"></circle><line x1="13.5" y1="13.5" x2="18" y2="18"></line></svg>
+      <input type="text" id="search" placeholder="Search — Gap, Expedia, vet, groceries..."
+             autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="chiprow" id="chips"></div>
+
+    <div class="payrow">
+      <span class="paylabel">Where</span>
+      <div class="seg" id="howchips">
+        <button class="on" data-how="person">In a shop</button>
+        <button data-how="online">Online</button>
+      </div>
+    </div>
+
+    <label class="toggle">
+      <input type="checkbox" id="abroad">
+      <span>Outside the US (or a foreign merchant)</span>
+    </label>
+
+    <div id="answer"></div>
+  </section>
+
+  <!-- ============ MY CARDS ============ -->
+  <section id="tab-cards">
+    <h2 class="sec">Your cards</h2>
+    <div id="cardlist"></div>
+    <button class="btn" id="addcard">+ Add a card</button>
+
+    <h2 class="sec">Your rent</h2>
+    <div class="card"><div class="edit" style="border-top:0;padding-top:12px" id="rentbox"></div></div>
+    <div class="card"><div class="edit" style="border-top:0;padding-top:12px">
+      <h2 class="sec" style="margin:0 0 6px">How Bilt actually pays you</h2>
+      <div id="biltsteps"></div>
+    </div></div>
+
+    <h2 class="sec">What a point is worth</h2>
+    <div class="card"><div class="edit" style="border-top:0;padding-top:12px" id="cpplist"></div></div>
+    <p class="hint" style="margin:0 4px">
+      These set how the app compares points against cash back. Defaults assume you
+      transfer to airline and hotel partners. Lower them toward 1&cent; if you mostly cash out.
+    </p>
+
+    <h2 class="sec">Reset</h2>
+    <button class="btn quiet" id="reset">Reset everything to defaults</button>
+    <p class="hint" style="margin:2px 4px 30px">
+      Version <span id="ver"></span> &middot; Everything is stored on this phone only.
+      Nothing is sent anywhere.
+    </p>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="sheet" class="on"><span class="ic">&#9776;</span>Cheat sheet</button>
+  <button data-tab="ask"><span class="ic">&#63;</span>Ask</button>
+  <button data-tab="cards"><span class="ic">&#9635;</span>My cards</button>
+</nav>
+
+<script>
+"use strict";
+const APP_VERSION = "1.8.0";
+const STORE_KEY = "cardpicker.v1";
+
+/* ============================================================
+   CATEGORIES
+   `on` / `off` mark which ones show up under In person vs Online
+   in the Ask tab. `sheet:false` hides a category from the cheat
+   sheet but keeps it available to the Ask tab.
+   ============================================================ */
+const CATS = [
+  {id:"rent",         emo:"\u{1F3E0}", label:"Rent", short:"Rent", alias:"rent mortgage landlord", hide:true, fee:3,
+   feeNote:"Landlords and rent portals charge about 3% to take a credit card. That fee is subtracted below, which is why almost every card ends up losing you money on rent."},
+  {id:"dining",       emo:"\u{1F37D}", label:"Dining & restaurants", short:"Dining / Takeout", alias:"restaurant cafe coffee starbucks bar pub takeout doordash uber eats grubhub seamless caviar food delivery brunch dinner lunch"},
+  {id:"groceries",    emo:"\u{1F6D2}", label:"Groceries (in store)", short:"Groceries", alias:"safeway trader joes kroger wegmans publix aldi sprouts whole foods costco supermarket food store"},
+  {id:"groceriesOnline",emo:"\u{1F4E6}",label:"Groceries (online / delivery)", short:"Grocery delivery", alias:"instacart amazon fresh online grocery shipt delivery"},
+  {id:"amazon",       emo:"\u{1F4E6}", label:"Amazon & Whole Foods", short:"Amazon", alias:"amazon whole foods audible prime", hide:true},
+  {id:"online",       emo:"\u{1F5B1}", label:"Online shopping", short:"Online shopping", alias:"internet website app asos shein etsy ebay online order"},
+  {id:"retail",       emo:"\u{1F3EC}", label:"Stores & retail (in person)", short:"Shops / Clothing", alias:"gap clothing zara h&m uniqlo nordstrom macys target walmart best buy apple store sephora ulta home depot lowes ikea shop store mall boutique shoes"},
+  {id:"gas",          emo:"⛽",    label:"Gas", short:"Gas", alias:"gas petrol fuel shell chevron exxon bp arco ev charging"},
+  {id:"lyft",         emo:"\u{1F695}", label:"Lyft rides", short:"Lyft", alias:"lyft", hide:true},
+  {id:"transit",      emo:"\u{1F687}", label:"Uber, transit & tolls", short:"Uber / Transit", alias:"uber taxi cab subway metro bus train bart caltrain muni commute"},
+  {id:"flightsPortal",emo:"✈",    label:"Flights — booked in a card portal", short:"Flights (portal)", alias:"chase travel capital one travel portal flight booking"},
+  {id:"unitedFlights",emo:"\u{1F6EB}", label:"United flights", askHide:true, short:"United flights", alias:"united ual mileageplus"},
+  {id:"flightsDirect",emo:"✈",    label:"Flights — other airlines, booked direct", askHide:true, short:"Flights (airline)", alias:"delta american southwest jetblue alaska airline flight airfare ticket"},
+  {id:"hotelsPortal", emo:"\u{1F3E8}", label:"Hotels & rental cars — card portal", askHide:true, short:"Hotels (portal)", alias:"chase travel capital one travel hotel portal"},
+  {id:"hotelsDirect", emo:"\u{1F3E8}", label:"Hotels — booked direct", askHide:true, short:"Hotels (direct)", alias:"marriott hilton hyatt ihg westin sheraton motel inn hotel"},
+  {id:"vacationRental",emo:"\u{1F3D6}", label:"Vacation rentals (Airbnb, Vrbo)", askHide:true, short:"Airbnb / Vrbo", alias:"airbnb vrbo vacation rental homeaway vacasa"},
+  {id:"rentalCar",    emo:"\u{1F697}", label:"Rental cars — booked direct",
+   feeNote:"Booked through Capital One Travel a rental car earns 10x instead. Either way the insurance below is usually worth more than the points.", short:"Rental cars", alias:"hertz avis enterprise budget sixt national alamo rental car hire"},
+  {id:"travelOther",  emo:"\u{1F9F3}", label:"Other travel (Expedia, parking, tolls)", short:"Other travel", alias:"expedia booking priceline kayak orbitz costco travel parking garage toll bridge ferry cruise travel agency"},
+  {id:"streaming",    emo:"\u{1F4FA}", label:"Streaming, internet & phone", short:"Streaming / Phone", alias:"netflix spotify hulu disney max youtube internet phone verizon att t-mobile comcast xfinity cable", hide:true},
+  {id:"drugstore",    emo:"\u{1F48A}", label:"Drugstores", short:"Drugstores", alias:"cvs walgreens rite aid pharmacy chemist"},
+  {id:"bills",        emo:"\u{1F4C4}", label:"Bills, utilities & insurance", short:"Bills & utilities", alias:"utility electric water gas bill insurance geico progressive statefarm", hide:true},
+  {id:"everything",   emo:"⭐",    label:"Everything else", short:"Everything else", alias:"doctor dentist vet gym hospital tuition school charity misc other"}
+];
+
+/* ============================================================
+   POINT CURRENCIES  (cpp = cents per point)
+   ============================================================ */
+const DEFAULT_CPP = {
+  chase:  {name:"Chase Ultimate Rewards", cpp:1.8},
+  bilt:   {name:"Bilt Points",            cpp:1.8},
+  capone: {name:"Capital One Miles",      cpp:1.8},
+  united: {name:"United MileagePlus",     cpp:1.3},
+  amazon: {name:"Amazon points",          cpp:1.0},
+  cash:   {name:"Cash back",              cpp:1.0}
+};
+
+/* ============================================================
+   CARDS
+   `earn`  multiplier per category; anything missing uses `base`
+   `mult`  a relationship / status multiplier applied on top
+   `ftf`   foreign transaction fee, as a percent
+   `caveat` extra line shown only when that category is in play
+   ============================================================ */
+const DEFAULT_CARDS = [
+  {
+    id:"csp", on:true, verified:false, issuer:"Chase", network:"Visa", tint:"#12325e", name:"Chase Sapphire Preferred", nick:"Sapphire Preferred",
+    src:"chase.com/sapphire-cards/personal/preferred — checked 25 Aug 2026",
+    cur:"chase", af:95, ftf:0, mult:1, base:1,
+    earn:{flightsPortal:5, hotelsPortal:5, lyft:5,
+          dining:3, gas:3, vacationRental:3, groceriesOnline:3, streaming:3,
+          flightsDirect:2, unitedFlights:2, hotelsDirect:2, travelOther:2,
+          rentalCar:2, transit:2},
+    notes:["Refreshed in June 2026 — it now earns 3x on gas and EV charging and 3x on vacation rentals, which it did not before."],
+    perk:{
+      rentalCar:{t:"Primary rental car cover",
+        b:"Up to $60,000 for collision or theft, worldwide, for up to 31 days. Primary means you claim through Chase and never involve your own car insurer. You must decline the rental counter's own waiver and pay the whole rental on this card."},
+      flightsDirect:{t:"Trip delay and cancellation cover",
+        b:"Delays over 12 hours reimburse up to $500 a ticket, and trip cancellation and interruption are covered, as long as you charge the fare to this card."},
+      unitedFlights:{t:"Trip delay and cancellation cover",
+        b:"Delays over 12 hours reimburse up to $500 a ticket. Weigh this against the Explorer's free checked bag."}
+    },
+    caveat:{
+      lyft:"5x on Lyft runs through 30 September 2027, and only for rides booked in the Lyft app.",
+      groceriesOnline:"Online grocery orders only, and not Target, Walmart or warehouse clubs.",
+      streaming:"Select streaming services only — not internet or phone bills."
+    }
+  },
+  {
+    id:"bilt", on:true, verified:false, issuer:"Bilt", network:"", tint:"#15181d", name:"Bilt Blue", nick:"Bilt",
+    src:"biltrewards.com + Upgraded Points review — checked 25 Aug 2026",
+    cur:"bilt", af:0, ftf:0, mult:1, base:1,
+    earn:{rent:1, lyft:3},
+    feeFree:{rent:true},
+    plus:{pct:4, label:"Bilt Cash", cur:"cash", ptsPerDollar:100, notOn:["rent"]},
+    plusRoutes:{
+      credit:{pct:4, label:"Bilt Cash", cur:"cash", ptsPerDollar:100, notOn:["rent"]},
+      rent:  {pct:4, label:"Bilt Cash", cur:"bilt", ptsPerDollar:33.33, capped:true, notOn:["rent"]}
+    },
+    notes:["Bilt Cash is not a statement credit and cannot be cashed out at face value. It is a set of monthly partner credits — GrubHub, Gopuff, Lyft, hotels, Priority Pass, parking, Walgreens, SoulCycle and similar — each capped, each resetting monthly, plus a conversion to rent points at $30 per 1,000.",
+           "So it is worth a full dollar only on spending you would have done at those partners anyway. The rent conversion is the reliable floor at roughly 60c on the dollar, and that is what the app assumes by default.",
+           "Redeeming is manual. Bilt Cash never converts itself, and the balance expires every 31 December with only $100 rolling over.",
+           "Rent and mortgage earn up to 1.25x with no transaction fee, which no other card here can do.",
+           "3x on Lyft is 2x for linking Bilt as your Lyft loyalty partner plus 1x for paying with the card. You have to link the accounts."],
+    caveat:{
+      rent:"You only earn points on rent by spending Bilt Cash to unlock them, up to 1x of the payment.",
+      lyft:"Only if your Lyft account is linked with Bilt set as the active loyalty partner."
+    }
+  },
+  {
+    id:"united", on:true, verified:false, issuer:"Chase", network:"Visa", tint:"#0b2a4a", name:"United Explorer", nick:"United Explorer",
+    src:"chase.com/travel-credit-cards/united/united-explorer — checked 25 Aug 2026",
+    cur:"united", af:150, ftf:0, mult:1, base:1,
+    earn:{unitedFlights:9, dining:2, hotelsDirect:2},
+    notes:["Changed in April 2026: United flights now earn 9x total, up from 2x, and the annual fee rose to $150 ($0 the first year).",
+           "Other United purchases that are not flights earn 3x.",
+           "Free first checked bag for you and a companion, 2 United Club passes a year, priority boarding."],
+    perk:{
+      unitedFlights:{t:"Free first checked bag", over:true,
+        b:"For you and a companion on the same booking. Two checked bags on a round trip is roughly $140 saved, which beats any points difference on a normal fare. You have to pay for the flight with this card to get it."}
+    },
+    caveat:{
+      unitedFlights:"9x is the total on eligible United flights. This is now far and away your best card for anything on United.",
+      hotelsDirect:"2x applies to hotel stays booked directly with the hotel."
+    }
+  },
+  {
+    id:"ventx", on:true, verified:false, issuer:"Capital One", network:"Visa", tint:"#1b1f27", name:"Capital One Venture X", nick:"Venture X",
+    src:"capitalone.com — checked 25 Aug 2026",
+    cur:"capone", af:395, ftf:0, mult:1, base:2,
+    earn:{hotelsPortal:10, flightsPortal:5},
+    notes:["The flat 2x on everything is what makes this your fallback whenever nothing else has a bonus.",
+           "$300 annual travel credit and 10,000 anniversary miles offset the $395 fee.",
+           "Flights and vacation rentals booked through Capital One Travel earn 5x."],
+    perk:{
+      rentalCar:{t:"The best rental car cover you own", over:true,
+        b:"Primary collision and theft cover up to $75,000, in the US and abroad — more than the Sapphire's $60,000. Decline the rental counter's waiver, which typically runs $15 to $30 a day, and pay the whole rental on this card. That saving dwarfs the difference in points."}
+    }
+  },
+  {
+    id:"prime", on:true, verified:false, issuer:"Chase", network:"Visa", tint:"#20303f", name:"Prime Visa", nick:"Prime Visa",
+    src:"creditcards.chase.com/cash-back-credit-cards/amazon-prime-rewards — checked 25 Aug 2026",
+    cur:"amazon", af:0, ftf:0, mult:1, base:1,
+    earn:{amazon:5, flightsPortal:5, dining:2, gas:2, transit:2, lyft:2},
+    notes:["5% covers Amazon.com, Audible, Whole Foods and Chase Travel, and needs an active Prime membership.",
+           "Points are fixed at 1 cent each toward Amazon purchases, which is why this card is valued at 1c below."],
+    caveat:{flightsPortal:"Through Chase Travel, not Capital One Travel."}
+  },
+  {
+    id:"bofa", on:true, verified:false, issuer:"Bank of America", network:"", tint:"#5a1220", name:"BofA Customized Cash Rewards", nick:"BofA Cash Rewards",
+    src:"bankofamerica.com cash-back-category-choices — checked 25 Aug 2026",
+    cur:"cash", af:0, ftf:3, mult:1.5, base:1,
+    earn:{online:3, streaming:3, amazon:3, groceries:2},
+    notes:["Your chosen 3% category is online shopping, which BofA defines as including cable, internet and streaming.",
+           "The 1.5x is your relationship bonus, expected to drop to 1.25 around November 2026. Change it here when it does.",
+           "You can switch your 3% category once per calendar month."],
+    caveat:{
+      online:"Online only — website or app. A purchase ordered online but collected in store does not count. It also excludes insurance, utilities and healthcare.",
+      groceries:"The 3% and 2% categories share a $2,500 cap per quarter, then drop to 1%.",
+      amazon:"BofA counts Amazon as online shopping, so it competes with Prime Visa here.",
+      streaming:"Counts because streaming falls inside BofA's online shopping category."
+    }
+  }
+];
+
+/* ============================================================
+   MERCHANT SHORTCUTS for the Ask tab
+   ============================================================ */
+const MERCHANTS = [
+  {n:"Costco",          cat:"groceries", note:"Warehouse clubs are excluded from most online-grocery bonuses. Costco also takes Visa only — every card you own is fine."},
+  {n:"Target",          cat:"retail",    note:"Target codes as a discount store, not a grocery store, so grocery bonuses do not apply."},
+  {n:"Instacart",       cat:"groceriesOnline", note:"Delivery apps code as online grocery, which is a different bonus from walking into the store."},
+  {n:"Expedia",         cat:"travelOther", note:"Booking sites code as general travel, not as a hotel or airline, so hotel and airline bonuses do not apply."},
+  {n:"Booking.com",     cat:"travelOther", note:"Same as Expedia — general travel, not a hotel."},
+  {n:"Costco Travel",   cat:"travelOther", note:"Costco Travel is a travel agency, so it codes as general travel — not as an airline, hotel or a card portal. That means no 5x or 10x portal rate, just your ordinary travel rate. It takes Visa and Mastercard, unlike the warehouse, so every card you own works. If you are booking a rental car through it, the primary rental cover still applies as long as you pay the whole booking on the card that provides it."},
+  {n:"Parking",         cat:"travelOther", note:"Parking and garages count as travel, which surprises most people."},
+  {n:"Tolls",           cat:"travelOther", note:"Toll roads and bridges count as travel too."}
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let S = null;
+
+function freshState(){
+  return {
+    cards: JSON.parse(JSON.stringify(DEFAULT_CARDS)),
+    cpp:   JSON.parse(JSON.stringify(DEFAULT_CPP)),
+    val:   "transfer",         // "transfer" | "penny"
+    rent:  0,                  // you set this on your phone; never stored in the repo
+    plusSpent: false,          // this month's Bilt Cash is already used up
+    showAll: false,            // include the categories you set and forgot
+    biltRoute: "rent"          // "rent" = convert to rent points, "credit" = partner credits
+  };
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    S = raw ? JSON.parse(raw) : freshState();
+    if(!S.cards || !S.cards.length) S = freshState();
+    if(!S.cpp) S.cpp = JSON.parse(JSON.stringify(DEFAULT_CPP));
+    if(!S.val) S.val = "transfer";
+    if(S.rent === undefined) S.rent = 0;
+    if(S.plusSpent === undefined) S.plusSpent = false;
+    if(S.showAll === undefined) S.showAll = false;
+    if(!S.biltRoute) S.biltRoute = "rent";
+    applyRoute();
+    migrate();
+  }catch(e){ S = freshState(); }
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} }
+
+// Point every card that has alternative redemption routes at the chosen one.
+function applyRoute(){
+  for(const c of S.cards){
+    const def = DEFAULT_CARDS.find(d => d.id === c.id);
+    if(def && def.plusRoutes && def.plusRoutes[S.biltRoute]){
+      c.plusRoutes = def.plusRoutes;
+      c.plus = JSON.parse(JSON.stringify(def.plusRoutes[S.biltRoute]));
+    }
+  }
+}
+
+// Explanatory text and fee-exemption flags aren't things you edit, so a newer
+// version of the app is always allowed to refresh them on the cards it shipped.
+// Your rates, fees and on/off switches are never touched.
+function migrate(){
+  for(const def of DEFAULT_CARDS){
+    const mine = S.cards.find(c => c.id === def.id);
+    if(!mine) continue;
+    mine.notes  = def.notes;
+    mine.caveat = def.caveat;
+    if(def.feeFree) mine.feeFree = def.feeFree;
+    if(mine.verified === undefined) mine.verified = false;
+    if(mine.plus === undefined && def.plus) mine.plus = def.plus;
+    if(def.plusRoutes) mine.plusRoutes = def.plusRoutes;
+    if(def.perk) mine.perk = def.perk;
+    if(mine.issuer  === undefined) mine.issuer  = def.issuer;
+    if(mine.network === undefined) mine.network = def.network;
+    if(mine.tint    === undefined) mine.tint    = def.tint;
+    delete mine.verify;
+  }
+}
+
+/* ============================================================
+   MATH
+   ============================================================ */
+function cppOf(card, mode){
+  if((mode || S.val) === "penny") return 1;
+  const c = S.cpp[card.cur];
+  return c ? Number(c.cpp) : 1;
+}
+function curName(id){ return (S.cpp[id] && S.cpp[id].name) || id; }
+
+// Returns every enabled card scored for one category, best first.
+function rank(cat, opt, mode){
+  opt = opt || {};
+  const kept = [], dropped = [];
+  for(const c of S.cards){
+    if(!c.on) continue;
+    if(opt.abroad && Number(c.ftf) > 0){ dropped.push(c); continue; }
+    const mult = (c.earn && c.earn[cat] != null) ? Number(c.earn[cat]) : Number(c.base);
+    const relm = Number(c.mult) || 1;
+    const meta = catById(cat);
+    const fee  = (meta && meta.fee && !(c.feeFree && c.feeFree[cat])) ? Number(meta.fee) : 0;
+    let plus = 0;
+    const plusOff = (c.plus && c.plus.notOn && c.plus.notOn.indexOf(cat) >= 0);
+    if(c.plus && Number(c.plus.pct) && !plusOff && !(c.plus.capped && S.plusSpent)){
+      const ppd  = Number(c.plus.ptsPerDollar) || 100;
+      const pcur = c.plus.cur ? { cur:c.plus.cur } : { cur:"cash" };
+      plus = Number(c.plus.pct) * ppd * cppOf(pcur, mode) / 100;
+    }
+    kept.push({ c, mult, relm, fee, plus, pct: mult * relm * cppOf(c, mode) + plus - fee });
+  }
+  kept.sort((a,b) => b.pct - a.pct || Number(a.c.af) - Number(b.c.af));
+  return { list: kept, dropped };
+}
+
+function fmt(n){
+  const r = Math.round(n * 100) / 100;
+  return String(r);
+}
+// "3% x 1.5 bonus = 4.5% cash back"  /  "3x Chase Ultimate Rewards"
+function earnLabel(r){
+  const total = r.mult * r.relm;
+  if(r.c.cur === "cash"){
+    const base = r.relm !== 1
+      ? fmt(r.mult) + "% &times; " + fmt(r.relm) + " bonus = " + fmt(total) + "% cash back"
+      : fmt(total) + "% cash back";
+    return r.plus ? base + " + " + fmt(r.c.plus.pct) + "% " + (r.c.plus.label || "extra") : base;
+  }
+  let out = fmt(total) + "x " + curName(r.c.cur);
+  if(r.plus) out += " + " + fmt(r.c.plus.pct) + "% " + (r.c.plus.label || "cash back") +
+    " (worth " + fmt(r.plus) + "%)";
+  return out;
+}
+function feeLabel(r){
+  return r.fee ? ' <span class="raw">&minus; ' + fmt(r.fee) + '% processing fee</span>' : "";
+}
+function catById(id){ return CATS.find(c => c.id === id); }
+
+// The rate as the card itself states it — "3x", or a percentage for cash back.
+// The comparable percentage stays alongside it as the smaller number.
+// Points per dollar, with any bonus currency converted into points and added in,
+// so "1x plus 4% Bilt Cash" reads as the single number it actually is.
+function effMult(r){
+  let m = r.mult * r.relm;
+  if(r.plus > 0 && r.c.plus.cur === r.c.cur){
+    m += Number(r.c.plus.pct) / 100 * (Number(r.c.plus.ptsPerDollar) || 100);
+  }
+  return m;
+}
+function headline(r){
+  if(r.c.cur === "cash"){
+    return fmt(r.mult * r.relm + (r.plus > 0 ? Number(r.c.plus.pct) : 0)) + "%";
+  }
+  let out = fmt(effMult(r)) + "x";
+  // A bonus in a different currency cannot be folded into the multiplier, so say both.
+  if(r.plus > 0 && r.c.plus.cur !== r.c.cur) out += " +" + fmt(r.c.plus.pct) + "%";
+  return out;
+}
+
+/* ============================================================
+   CHEAT SHEET
+   ============================================================ */
+function unverified(){ return S.cards.filter(c => c.on && !c.verified); }
+
+// Bilt Cash only has value while you still have rent left to unlock points on.
+// $30 of Bilt Cash buys 1,000 points, and you can unlock at most 1x your rent,
+// so R dollars of rent absorbs 0.03R of Bilt Cash — which 0.75R of spending earns.
+function plusCeiling(){
+  const b = S.cards.find(c => c.plus && c.plus.capped && c.on);
+  if(!b || !S.rent) return null;
+  const pct = Number(b.plus.pct) / 100;
+  const ppd = Number(b.plus.ptsPerDollar) || 100;
+  const cashNeeded = (Number(S.rent) / ppd);      // $ of Bilt Cash to unlock 1x rent
+  return { card:b, spend: cashNeeded / pct, cash: cashNeeded };
+}
+
+function renderSheet(){
+  const host = document.getElementById("sheet");
+  host.innerHTML = "";
+
+  const un = unverified();
+  const banner = document.getElementById("unver");
+  if(un.length){
+    banner.style.display = "block";
+    banner.innerHTML =
+      "<b>Rates came from each issuer's own page on 25 August 2026</b>, not from memory. " +
+      "Every card lists its source in <b>My cards</b>. Check each one against your own " +
+      "account and hit <b>Rates confirmed</b> to clear this. Still unconfirmed by you: " +
+      un.map(c => c.nick).join(", ") + ".";
+  }else{
+    banner.style.display = "none";
+  }
+
+  for(const cat of CATS){
+    if(cat.hide && !S.showAll) continue;
+    const {list} = rank(cat.id);
+    if(!list.length) continue;
+    let best = list[0];
+    const ov = perksFor(cat.id).find(x => x.p.over && x.c.on);
+    if(ov){
+      const alt = list.find(r => r.c.id === ov.c.id);
+      if(alt) best = alt;
+    }
+    const flip = winnerFlips(cat.id);
+
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML =
+      '<div class="row">' +
+        '<span class="emo">' + cat.emo + '</span>' +
+        '<span class="lab"><b>' + cat.label + '</b><s>' + best.c.nick + '</s></span>' +
+        '<span class="pct"><b>' + headline(best) + '</b>' +
+  '<s>' + fmt(best.pct) + '%' + (best.c.verified ? '' : ' <span class="q">?</span>') + '</s></span>' +
+        '<span class="chev">&#9656;</span>' +
+      '</div>' +
+      '<div class="detail">' + detailHTML(cat.id, list, flip) + '</div>';
+
+    el.querySelector(".row").onclick = () => el.classList.toggle("open");
+    host.appendChild(el);
+  }
+
+  document.getElementById("valnote").innerHTML = S.val === "transfer"
+    ? "Percentages assume you transfer points to airline and hotel partners. Cash-back cards are compared at face value."
+    : "Every point is being counted as exactly 1&cent;. This is the conservative view &mdash; it undersells cards you'd transfer out.";
+  document.getElementById("showall").textContent = S.showAll
+    ? "Hide the set-and-forget categories again"
+    : "Show rent, Amazon, Lyft, streaming and bills too";
+  document.getElementById("flipval").textContent = S.val === "transfer"
+    ? "Switch to 1¢-per-point view"
+    : "Switch back to transfer-value view";
+}
+
+function isTie(a, b){ return a && b && Math.abs(a.pct - b.pct) < 0.05; }
+
+// What a card is worth in a category once its bonus currency is exhausted.
+function rankPlain(card, cat){
+  const mult = (card.earn && card.earn[cat] != null) ? Number(card.earn[cat]) : Number(card.base);
+  return mult * (Number(card.mult) || 1) * cppOf(card);
+}
+
+function detailHTML(catId, list, flip){
+  let h = "";
+  const meta = catById(catId);
+  const cap = plusCeiling();
+  if(cap && list[0] && list[0].c.id === cap.card.id && list[0].plus){
+    h += '<div class="note warn"><b>Only up to $' + Math.round(cap.spend) +
+         ' a month.</b> Your rent can absorb $' + cap.cash.toFixed(0) + ' of ' +
+         (cap.card.plus.label || "bonus") + ', which is what $' + Math.round(cap.spend) +
+         ' of spending earns. Past that, ' + cap.card.nick + ' is just ' +
+         fmt(rankPlain(cap.card, catId)) + '%.</div>';
+  }else if(!S.rent && list[0] && list[0].plus){
+    h += '<div class="note warn">This depends on ' + (list[0].c.plus.label || "a bonus") +
+         ', which is capped by your rent. Enter your monthly rent in <b>My cards</b> ' +
+         'and the app will tell you how far it stretches.</div>';
+  }
+  h += perkHTML(catId, list[0] && list[0].c.id);
+  if(list[0] && !list[0].c.verified){
+    h += '<div class="note warn"><b>Unconfirmed.</b> This ranking depends on ' +
+         list[0].c.nick + ' rates you have not checked yet, so it may be wrong.</div>';
+  }
+  if(isTie(list[0], list[1])){
+    h += '<div class="note">Dead heat between <b>' + list[0].c.nick + '</b> and <b>' +
+         list[1].c.nick + '</b> — either is fine. The app lists the one with the smaller ' +
+         'annual fee first.</div>';
+  }
+  if(meta && meta.feeNote) h += '<div class="note warn">' + meta.feeNote + '</div>';
+  list.forEach((r, i) => {
+    h += '<div class="rank' + (i === 0 ? ' top' : '') + '">' +
+           '<span class="n">' + (i + 1) + '</span>' +
+           '<span class="nm">' + r.c.nick + '<br><span class="raw">' + earnLabel(r) + '</span>' + feeLabel(r) + '</span>' +
+           '<span class="v"><b>' + headline(r) + '</b><br><span class="raw">' + fmt(r.pct) + '%</span></span>' +
+         '</div>';
+  });
+  // Card-specific warnings for this category
+  for(const r of list.slice(0, 3)){
+    const cv = r.c.caveat && r.c.caveat[catId];
+    if(cv){
+      h += '<div class="note warn"><b>' + r.c.nick + ':</b> ' + cv + '</div>';
+    }
+  }
+  if(flip){
+    h += '<div class="note">If you value points at 1&cent; instead, <b>' + flip +
+         '</b> wins this category instead. Use the button at the bottom of this tab to compare.</div>';
+  }
+  return h;
+}
+
+// Does the winner change between the two ways of valuing points?
+function winnerFlips(catId, opt){
+  const a = rank(catId, opt, "transfer").list[0];
+  const b = rank(catId, opt, "penny").list[0];
+  if(!a || !b) return null;
+  if(a.c.id === b.c.id) return null;
+  return (S.val === "transfer" ? b : a).c.nick;
+}
+
+/* ============================================================
+   ASK
+   ============================================================ */
+const ONLINE_SWAP = { retail:"online", groceries:"groceriesOnline" };
+
+// One flat list of tappable things: every visible category, then the merchants
+// whose category you would never guess from the name.
+let CHIPS = [];
+let ask = { i:0, how:"person", abroad:false, more:false };
+
+function chipList(){
+  const out = [];
+  CATS.forEach(c => {
+    out.push({ label:c.short || c.label, emo:c.emo, cat:c.id, mi:null,
+               alias:c.alias || "", hidden:!!(c.hide || c.askHide) });
+  });
+  MERCHANTS.forEach((m, i) =>
+    out.push({ label:m.n, emo:"\u{1F4CD}", cat:m.cat, mi:i, alias:m.n.toLowerCase() }));
+  return out;
+}
+
+function buildAsk(){
+  CHIPS = chipList();
+  // Open on the everyday case, not on whichever category happens to be first.
+  const dflt = CHIPS.findIndex(c => c.cat === "everything");
+  ask.i = dflt >= 0 ? dflt : CHIPS.findIndex(c => !c.hidden);
+  document.getElementById("search").oninput = () => renderChips(true);
+  document.querySelectorAll("#howchips button").forEach(b => {
+    b.onclick = () => { ask.how = b.dataset.how; syncAsk(); };
+  });
+  document.getElementById("abroad").onchange = e => {
+    ask.abroad = e.target.checked; renderAnswer();
+  };
+  renderChips();
+}
+
+function renderChips(autoPick){
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const row = document.getElementById("chips");
+  row.innerHTML = "";
+
+  // Typing should answer the question, not hand you a second thing to tap.
+  if(autoPick !== false && q){
+    const hit = CHIPS.findIndex(c =>
+      c.label.toLowerCase().includes(q) || (c.alias || "").includes(q));
+    if(hit >= 0) ask.i = hit;
+  }
+
+  // Collapsed to one screenful by default, so the answer stays in view.
+  const COLLAPSED = 8;
+  const matches = [];
+  CHIPS.forEach((c, i) => {
+    const hit = q && (c.label.toLowerCase().includes(q) || (c.alias || "").includes(q));
+    if(q ? !hit : (c.hidden && !S.showAll)) return;
+    matches.push(i);
+  });
+
+  const clip = !q && !ask.more && matches.length > COLLAPSED;
+  let visible = clip ? matches.slice(0, COLLAPSED) : matches;
+  // Never hide the chip you have selected.
+  if(clip && matches.indexOf(ask.i) >= COLLAPSED) visible = [ask.i].concat(visible);
+
+  let shown = 0;
+  visible.forEach(i => {
+    const c = CHIPS[i];
+    shown++;
+    const d = document.createElement("div");
+    d.className = "chip" + (i === ask.i ? " on" : "");
+    d.innerHTML = '<span class="ce">' + c.emo + '</span>' + c.label;
+    d.onclick = () => { ask.i = i; renderChips(false); };
+    row.appendChild(d);
+  });
+  if(!q && matches.length > COLLAPSED){
+    const m = document.createElement("div");
+    m.className = "chip more";
+    m.textContent = ask.more ? "Fewer \u25B4" : "More \u25BE";
+    m.onclick = () => { ask.more = !ask.more; renderChips(false); };
+    row.appendChild(m);
+  }
+  if(!shown){
+    const d = document.createElement("div");
+    d.className = "nohit";
+    d.textContent = 'Nothing matches "' + document.getElementById("search").value.trim() +
+      '". What decides the rate is how the shop is categorised, not its name — clear the ' +
+      'search and pick the closest category.';
+    row.appendChild(d);
+  }
+  renderAnswer();
+}
+
+function syncAsk(){
+  document.querySelectorAll("#howchips button").forEach(b =>
+    b.classList.toggle("on", b.dataset.how === ask.how));
+  renderAnswer();
+}
+
+function activeChip(){ return CHIPS[ask.i] || CHIPS[0]; }
+function activeCat(){
+  const c = activeChip();
+  if(!c) return "everything";
+  return (ask.how === "online" && ONLINE_SWAP[c.cat]) ? ONLINE_SWAP[c.cat] : c.cat;
+}
+
+// Benefits attached to a category, and whether one should outrank the points.
+function perksFor(cat){
+  return S.cards.filter(c => c.on && c.perk && c.perk[cat]).map(c => ({ c, p:c.perk[cat] }));
+}
+function perkHTML(cat, winnerId, skipWinner){
+  let h = "";
+  for(const {c, p} of perksFor(cat)){
+    if(skipWinner && c.id === winnerId) continue;
+    const isOver = p.over && c.id !== winnerId;
+    h += '<div class="perk' + (isOver ? ' over' : '') + '">' +
+         '<div class="pt">' + (isOver ? 'Worth more than the points' : p.t) + '</div>' +
+         '<div class="pn">' + c.nick + (isOver ? ' — ' + p.t : '') + '</div>' +
+         '<div class="pb">' + p.b + '</div></div>';
+  }
+  return h;
+}
+
+// Mix a colour toward black, for the card face gradient.
+function shade(hex){
+  const h = (hex || "#1b1f27").replace("#", "");
+  const n = parseInt(h.length === 3 ? h.split("").map(x => x + x).join("") : h, 16);
+  const f = 0.55;
+  const r = Math.round(((n >> 16) & 255) * f),
+        g = Math.round(((n >> 8) & 255) * f),
+        b = Math.round((n & 255) * f);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+function faceHTML(r){
+  const c = r.c;
+  const fee = Number(c.af) ? "$" + c.af + "/yr" : "No annual fee";
+  const cur = (c.cur === "cash") ? "Cash back" : curName(c.cur) + " @ " + fmt(cppOf(c)) + "¢/pt";
+  const ftf = Number(c.ftf) ? fmt(c.ftf) + "% abroad" : "No foreign fee";
+  return '<div class="face" style="background:linear-gradient(135deg,' +
+      (c.tint || "#1b1f27") + ' 0%,' + shade(c.tint) + ' 100%)">' +
+    (c.network ? '<span class="net">' + c.network.toUpperCase() + '</span>' : '') +
+    '<div class="iss">' + (c.issuer || "") + '</div>' +
+    '<div class="nm">' + c.name + '</div>' +
+    '<div class="mid"><span class="mchip">' + headline(r) + '</span>' +
+      '<span class="fee">' + fee + '</span></div>' +
+    '<div class="bot">' + cur + '<span class="ftf">' + ftf + '</span></div>' +
+  '</div>';
+}
+
+function renderAnswer(){
+  const host = document.getElementById("answer");
+  if(!host) return;
+  const cat = activeCat();
+  const {list, dropped} = rank(cat, { abroad: ask.abroad });
+
+  if(!list.length){
+    host.innerHTML = '<div class="best"><div class="mrow"><div class="top">' +
+      '<span class="lbl">No card available — everything is switched off, or carries a ' +
+      'foreign transaction fee.</span></div></div></div>';
+    return;
+  }
+
+  let best = list[0], overNote = null;
+  const over = perksFor(cat).find(x => x.p.over && x.c.on);
+  if(over && over.c.id !== best.c.id){
+    const alt = list.find(r => r.c.id === over.c.id);
+    if(alt){ overNote = { from: best, p: over.p }; best = alt; }
+  }
+  // If cover is why we picked this card, the sensible fallback also has cover.
+  let second = null;
+  if(overNote){
+    const withPerk = perksFor(cat).map(x => x.c.id);
+    second = list.find(r => r.c.id !== best.c.id && withPerk.indexOf(r.c.id) >= 0);
+  }
+  if(!second) second = list.find(r => r.c.id !== best.c.id);
+
+  let h = '<div class="best">' +
+    '<div class="besthead">' +
+      '<span class="badge">⚡ Best card to use</span>' +
+      '<span class="badge ret">' + fmt(best.pct) + '% return</span>' +
+    '</div>' +
+    faceHTML(best) +
+    '<div class="mrow"><div class="top">' +
+      '<span class="lbl">Reward multiplier</span>' +
+      '<span class="big">' + headline(best) + '</span></div>' +
+      '<div class="tip">\u{1F4A1} ' + earnLabel(best) + ' on ' + catById(cat).label + '</div></div>';
+
+  if(overNote){
+    h += '<div class="mrow"><div class="top"><span class="lbl">' +
+         '<b>' + overNote.p.t + '</b> is why this beats the points winner, ' +
+         overNote.from.c.nick + ' at ' + headline(overNote.from) + '.</span></div>' +
+         '<div class="tip">' + overNote.p.b + '</div></div>';
+  }
+
+  if(second){
+    h += '<div class="runner"><span class="rl">' +
+         (isTie(best, second) ? 'Ties with' : (overNote && second.c.perk && second.c.perk[cat]
+            ? 'Also covered' : 'Runner up')) + '</span>' +
+         '<span class="rn">' + second.c.name + '</span>' +
+         '<span class="rv">' + headline(second) + ' &middot; ' + fmt(second.pct) + '%</span></div>';
+  }
+
+  h += '<button class="seeall">See all ' + list.length + ' cards ranked &rsaquo;</button>' +
+       '<div class="allcards">' + detailRanks(list) + '</div>' +
+       '</div>';
+
+  // Everything that qualifies the answer sits below the card, not inside it.
+  h += perkHTML(cat, best.c.id, true);
+
+  const cap = plusCeiling();
+  if(cap && best.c.id === cap.card.id && best.plus){
+    h += '<div class="note warn"><b>Good for your first $' + Math.round(cap.spend) +
+         ' of non-rent spending each month.</b> After that ' + cap.card.nick + ' drops to ' +
+         fmt(rankPlain(cap.card, cat)) + '% — flip the switch in My cards when you have used ' +
+         'this month up.</div>';
+  }
+  if(!best.c.verified){
+    h += '<div class="note warn"><b>Unconfirmed rate.</b> Check ' + best.c.nick +
+         ' in its own app before trusting this one.</div>';
+  }
+  const meta = catById(cat);
+  if(meta && meta.feeNote) h += '<div class="note warn">' + meta.feeNote + '</div>';
+
+  const chip = activeChip();
+  if(chip && chip.mi !== null && MERCHANTS[chip.mi].note){
+    h += '<div class="note warn">' + MERCHANTS[chip.mi].note + '</div>';
+  }
+  for(const r of list.slice(0, 3)){
+    const cv = r.c.caveat && r.c.caveat[cat];
+    if(cv) h += '<div class="note warn"><b>' + r.c.nick + ':</b> ' + cv + '</div>';
+  }
+  if(chip && cat !== chip.cat){
+    h += '<div class="note">Counted as <b>' + catById(cat).label +
+         '</b> because you chose online.</div>';
+  }
+  if(ask.abroad && dropped.length){
+    h += '<div class="note">Left out abroad: ' +
+         dropped.map(c => c.nick + " (" + fmt(c.ftf) + "% foreign fee)").join(", ") + '.</div>';
+  }
+  const flip = winnerFlips(cat, { abroad: ask.abroad });
+  if(flip){
+    h += '<div class="note">Close call: valuing points at 1&cent; instead, <b>' + flip +
+         '</b> comes out ahead here.</div>';
+  }
+
+  host.innerHTML = h;
+  const btn = host.querySelector(".seeall");
+  if(btn){
+    btn.onclick = () => {
+      const box = host.querySelector(".allcards");
+      box.classList.toggle("on");
+      btn.innerHTML = box.classList.contains("on")
+        ? "Hide the full ranking &rsaquo;"
+        : "See all " + list.length + " cards ranked &rsaquo;";
+    };
+  }
+}
+
+function detailRanks(list){
+  let h = "";
+  list.forEach((r, i) => {
+    h += '<div class="rank' + (i === 0 ? ' top' : '') + '">' +
+           '<span class="n">' + (i + 1) + '</span>' +
+           '<span class="nm">' + r.c.nick + '<br><span class="raw">' + earnLabel(r) + '</span></span>' +
+           '<span class="v"><b>' + headline(r) + '</b><br><span class="raw">' +
+             fmt(r.pct) + '%</span></span>' +
+         '</div>';
+  });
+  return h;
+}
+
+/* ============================================================
+   MY CARDS
+   ============================================================ */
+function renderCards(){
+  const host = document.getElementById("cardlist");
+  const openIds = [...host.querySelectorAll(".card.open")].map(e => e.dataset.id);
+  host.innerHTML = "";
+
+  S.cards.forEach(card => {
+    const el = document.createElement("div");
+    el.className = "card" + (openIds.includes(card.id) ? " open" : "");
+    el.dataset.id = card.id;
+
+    const feeBits = [];
+    feeBits.push(Number(card.af) ? "$" + card.af + " a year" : "No annual fee");
+    if(Number(card.ftf)) feeBits.push(fmt(card.ftf) + "% foreign fee");
+    else feeBits.push("no foreign fee");
+
+    el.innerHTML =
+      '<div class="ctitle">' +
+        '<label class="sw"><input type="checkbox" ' + (card.on ? "checked" : "") + '><i></i></label>' +
+        '<b>' + card.name + '<span class="tag' + (card.verified ? ' ok' : '') + '">' +
+          (card.verified ? 'confirmed' : 'unconfirmed') + '</span>' +
+          '<br><span class="meta">' + feeBits.join(" &middot; ") + '</span></b>' +
+        '<span class="chev">&#9656;</span>' +
+      '</div>' +
+      '<div class="detail"><div class="edit"></div></div>';
+
+    el.querySelector(".sw input").onchange = e => {
+      card.on = e.target.checked; save(); renderSheet(); renderAnswer();
+    };
+    el.querySelector(".ctitle").onclick = e => {
+      if(e.target.closest(".sw")) return;
+      el.classList.toggle("open");
+    };
+    fillEditor(el.querySelector(".edit"), card);
+    host.appendChild(el);
+  });
+}
+
+function fillEditor(box, card){
+  box.innerHTML = "";
+
+  const num = (label, val, onset, step) => {
+    const r = document.createElement("div");
+    r.className = "erow";
+    r.innerHTML = '<span>' + label + '</span>';
+    const i = document.createElement("input");
+    i.type = "number"; i.step = step || "0.1"; i.value = val;
+    i.onchange = () => { onset(Number(i.value)); save(); renderSheet(); renderAnswer(); renderCards(); };
+    r.appendChild(i);
+    box.appendChild(r);
+  };
+
+  const head = document.createElement("h2");
+  head.className = "sec"; head.style.margin = "12px 0 2px";
+  head.textContent = "Bonus categories";
+  box.appendChild(head);
+
+  const used = Object.keys(card.earn || {});
+  if(!used.length){
+    const p = document.createElement("p");
+    p.className = "hint"; p.textContent = "No bonus categories — this card earns its base rate on everything.";
+    box.appendChild(p);
+  }
+  used.forEach(cid => {
+    const c = catById(cid);
+    const r = document.createElement("div");
+    r.className = "erow";
+    r.innerHTML = '<span>' + (c ? c.label : cid) + '</span>';
+    const i = document.createElement("input");
+    i.type = "number"; i.step = "0.5"; i.value = card.earn[cid];
+    i.onchange = () => { card.earn[cid] = Number(i.value); save(); renderSheet(); renderAnswer(); };
+    const x = document.createElement("span");
+    x.className = "x"; x.textContent = "×"; x.title = "Remove";
+    x.onclick = () => { delete card.earn[cid]; save(); renderCards(); renderSheet(); renderAnswer(); };
+    r.appendChild(i); r.appendChild(x);
+    box.appendChild(r);
+  });
+
+  // add a bonus category
+  const addRow = document.createElement("div");
+  addRow.className = "erow";
+  const sel = document.createElement("select");
+  sel.style.flex = "1";
+  CATS.filter(c => !(c.id in (card.earn || {}))).forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.id; o.textContent = c.label;
+    sel.appendChild(o);
+  });
+  const addBtn = document.createElement("span");
+  addBtn.className = "x"; addBtn.textContent = "+"; addBtn.style.fontSize = "22px";
+  addBtn.onclick = () => {
+    if(!sel.value) return;
+    card.earn = card.earn || {};
+    card.earn[sel.value] = 2;
+    save(); renderCards(); renderSheet(); renderAnswer();
+  };
+  if(sel.options.length){ addRow.appendChild(sel); addRow.appendChild(addBtn); box.appendChild(addRow); }
+
+  const head2 = document.createElement("h2");
+  head2.className = "sec"; head2.style.margin = "18px 0 2px";
+  head2.textContent = "The rest of this card";
+  box.appendChild(head2);
+
+  num("Base rate (everything else)", card.base, v => card.base = v, "0.5");
+  num("Extra flat cash back on everything (%)",
+      (card.plus && card.plus.pct) || 0,
+      v => { card.plus = v ? {pct:v, label:(card.plus && card.plus.label) || "cash back"} : null; },
+      "0.5");
+  num("Relationship / status multiplier", card.mult || 1, v => card.mult = v, "0.05");
+  num("Annual fee ($)", card.af, v => card.af = v, "5");
+  num("Foreign transaction fee (%)", card.ftf, v => card.ftf = v, "0.5");
+
+  if(card.src){
+    const d = document.createElement("p");
+    d.className = "hint";
+    d.style.marginTop = "10px";
+    d.textContent = "Rates from: " + card.src;
+    box.appendChild(d);
+  }
+  (card.notes || []).forEach(n => {
+    const d = document.createElement("div");
+    d.className = "note"; d.textContent = n;
+    box.appendChild(d);
+  });
+  if(card.verify){
+    const d = document.createElement("div");
+    d.className = "note warn";
+    d.innerHTML = "<b>Double-check these rates.</b> Bilt reorganised into tiers recently and I'm " +
+      "not certain the Blue tier multipliers above are current. Open the Bilt app, confirm, and " +
+      "correct them here — it takes a minute and everything downstream fixes itself.";
+    box.appendChild(d);
+  }
+
+  const ok = document.createElement("button");
+  ok.className = "btn" + (card.verified ? " quiet" : " solid");
+  ok.textContent = card.verified
+    ? "Rates confirmed — tap to un-confirm"
+    : "I checked these in the app — mark confirmed";
+  ok.onclick = () => {
+    card.verified = !card.verified;
+    save(); renderCards(); renderSheet(); renderAnswer();
+  };
+  box.appendChild(ok);
+
+  const del = document.createElement("button");
+  del.className = "btn quiet"; del.textContent = "Delete " + card.nick;
+  del.onclick = () => {
+    if(!confirm("Delete " + card.name + "?")) return;
+    S.cards = S.cards.filter(c => c !== card);
+    save(); renderCards(); renderSheet(); renderAnswer();
+  };
+  box.appendChild(del);
+}
+
+function renderRent(){
+  const box = document.getElementById("rentbox");
+  box.innerHTML = "";
+  const r = document.createElement("div");
+  r.className = "erow";
+  r.innerHTML = '<span>Monthly rent ($)</span>';
+  const i = document.createElement("input");
+  i.type = "number"; i.step = "50"; i.value = S.rent || 0;
+  i.onchange = () => { S.rent = Number(i.value); save(); renderRent(); renderSheet(); renderAnswer(); };
+  r.appendChild(i);
+  box.appendChild(r);
+
+  const cap = plusCeiling();
+  if(cap){
+    const d = document.createElement("div");
+    d.className = "note";
+    d.innerHTML = "At $" + S.rent + " rent, Bilt Cash is worth something on your first <b>$" +
+      Math.round(cap.spend) + "</b> of non-rent spending each month. Past that, Bilt is a plain 1x card.";
+    box.appendChild(d);
+  }
+
+  const steps = document.getElementById("biltsteps");
+  if(steps){
+    const b = S.cards.find(c => c.plusRoutes);
+    if(!b){
+      steps.innerHTML = "";
+    }else{
+      const route = S.biltRoute;
+      const R = b.plusRoutes[route];
+      const pct = Number(R.pct);
+      let h = '<div class="chips" style="margin-bottom:12px">' +
+        '<div class="chip' + (route === "rent" ? " on" : "") + '" data-route="rent">Rent points — the safe floor</div>' +
+        '<div class="chip' + (route === "credit" ? " on" : "") + '" data-route="credit">Partner credits — only if you use them</div>' +
+        '</div>';
+
+      h += '<p class="hint">Every $1 you spend earns <b>1 Bilt Point</b>, plus <b>' + pct +
+           '&cent; of Bilt Cash</b>. Bilt Cash is a separate thing from points, and you have to ' +
+           'redeem it yourself — it never converts on its own. Anything over $100 left at the ' +
+           'end of the calendar year expires.</p>';
+
+      if(route === "credit"){
+        h += '<div class="note warn"><b>This is the optimistic route.</b> Bilt Cash is not a ' +
+             'statement credit — it is a book of monthly partner credits (GrubHub, Gopuff, Lyft, ' +
+             'hotels, Priority Pass, parking, Walgreens, SoulCycle and so on). Each has its own ' +
+             'monthly cap and none roll over, and the whole balance expires every 31 December ' +
+             'with only $100 carrying forward. It is worth a full dollar only on spending you ' +
+             'were going to do at those partners anyway.</div>' +
+             '<div class="note">Counted at face value, every $1 gets you <b>1 point plus 4&cent;</b>, ' +
+             'about <b>' + fmt(1 * cppOf(b) + pct) + '%</b>. There is no single "x" for this, ' +
+             'because two different currencies cannot be one multiplier — hence <b>1x +4%</b>.</div>';
+      }else{
+        const ppd  = Number(R.ptsPerDollar);
+        const cash = S.rent / ppd;
+        const need = cash / (pct / 100);
+        h += '<div class="note">Converted to rent points, <b>$30 of Bilt Cash buys 1,000 points</b> ' +
+             '— about 60&cent; on the dollar, but dependable and not tied to any partner. ' +
+             'and you can unlock at most 1 point per $1 of rent. Your rent is <b>$' + S.rent +
+             '</b>, so the ceiling is <b>' + S.rent.toLocaleString() + ' points</b> a month, ' +
+             'costing <b>$' + cash.toFixed(0) + '</b> of Bilt Cash — which <b>$' +
+             Math.round(need).toLocaleString() + '</b> of spending earns.</div>';
+
+        const rows = [500,1000,1500,2000,2500,3000,3500,4000,5000];
+        h += '<div class="tw"><table class="mt"><thead><tr>' +
+             '<th>You spend</th><th>Points</th><th>Works out as</th></tr></thead><tbody>';
+        for(const sp of rows){
+          const unlocked = Math.min(sp * pct / 100 * ppd, S.rent);
+          const total = sp + unlocked;
+          const mult = total / sp;
+          const capped = unlocked >= S.rent - 0.5;
+          h += '<tr' + (capped ? ' class="cap"' : '') + '><td>$' + sp.toLocaleString() + '</td>' +
+               '<td>' + Math.round(total).toLocaleString() + '</td>' +
+               '<td><b>' + fmt(mult) + 'x</b>' + (capped ? ' <span class="raw">capped</span>' : '') +
+               '</td></tr>';
+        }
+        h += '</tbody></table></div>' +
+             '<p class="hint">The multiplier is flat at <b>' + fmt(1 + pct / 100 * ppd) +
+             'x</b> all the way up to <b>$' + Math.round(need).toLocaleString() + '</b> — spending ' +
+             'less does not earn you a worse rate, it just means you leave rent points on the ' +
+             'table. Only past $' + Math.round(need).toLocaleString() + ' does it start falling, ' +
+             'because there is no rent left to unlock.</p>';
+      }
+      steps.innerHTML = h;
+      steps.querySelectorAll(".chip").forEach(ch => {
+        ch.onclick = () => {
+          S.biltRoute = ch.dataset.route;
+          applyRoute(); save(); renderRent(); renderCards(); renderSheet(); renderAnswer();
+        };
+      });
+    }
+  }
+
+  const t = document.createElement("label");
+  t.className = "toggle";
+  t.innerHTML = '<input type="checkbox"' + (S.plusSpent ? " checked" : "") +
+    '><span>I have used up this month\'s Bilt Cash</span>';
+  t.querySelector("input").onchange = e => {
+    S.plusSpent = e.target.checked; save(); renderSheet(); renderAnswer();
+  };
+  box.appendChild(t);
+}
+
+function renderCpp(){
+  const box = document.getElementById("cpplist");
+  box.innerHTML = "";
+  Object.keys(S.cpp).forEach(id => {
+    const r = document.createElement("div");
+    r.className = "erow";
+    r.innerHTML = '<span>' + S.cpp[id].name + '</span>';
+    const i = document.createElement("input");
+    i.type = "number"; i.step = "0.1"; i.value = S.cpp[id].cpp;
+    i.onchange = () => { S.cpp[id].cpp = Number(i.value); save(); renderSheet(); renderAnswer(); };
+    r.appendChild(i);
+    box.appendChild(r);
+  });
+}
+
+/* ---- add a card ---- */
+document.getElementById("addcard").onclick = () => {
+  const name = prompt("Card name (for example: Amex Gold)");
+  if(!name) return;
+  const curKeys = Object.keys(S.cpp);
+  const which = prompt(
+    "What does it earn? Type the number:\n\n" +
+    curKeys.map((k, i) => (i + 1) + ". " + S.cpp[k].name).join("\n") +
+    "\n" + (curKeys.length + 1) + ". Something else (you'll name it)",
+    String(curKeys.length)
+  );
+  let cur;
+  const n = Number(which);
+  if(n >= 1 && n <= curKeys.length){
+    cur = curKeys[n - 1];
+  }else{
+    const cname = prompt("Name that currency (for example: Amex Membership Rewards)");
+    if(!cname) return;
+    cur = "cur" + Date.now();
+    const cpp = Number(prompt("What's one point worth, in cents? (1 = plain cash back)", "1.8")) || 1;
+    S.cpp[cur] = { name: cname, cpp };
+  }
+  const base = Number(prompt("Base rate on everything else (1 = 1x or 1%)", "1")) || 1;
+  S.cards.push({
+    id: "c" + Date.now(), on: true, name, nick: name,
+    cur, af: 0, ftf: 0, mult: 1, base, earn: {}, notes: [], caveat: {}
+  });
+  save(); renderCards(); renderRent(); renderCpp(); renderSheet(); renderAnswer();
+  alert("Added. Tap it in the list to set its bonus categories, annual fee and foreign fee.");
+};
+
+document.getElementById("reset").onclick = () => {
+  if(!confirm("Reset every card and point value back to how the app shipped?")) return;
+  S = freshState(); save(); renderAll();
+};
+document.getElementById("showall").onclick = () => {
+  S.showAll = !S.showAll; save(); renderSheet();
+};
+document.getElementById("flipval").onclick = () => {
+  S.val = (S.val === "transfer") ? "penny" : "transfer";
+  save(); renderSheet(); renderAnswer();
+};
+
+/* ============================================================
+   TABS + BOOT
+   ============================================================ */
+const SUBLINES = {
+  sheet: "Tap a category to see the full ranking",
+  ask:   "Tell it what you're buying",
+  cards: "Add, edit or switch off a card"
+};
+document.querySelectorAll("nav button").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+    document.querySelectorAll("section").forEach(s =>
+      s.classList.toggle("on", s.id === "tab-" + b.dataset.tab));
+    document.getElementById("subline").textContent = SUBLINES[b.dataset.tab];
+    window.scrollTo(0, 0);
+  };
+});
+
+function renderAll(){ renderSheet(); renderCards(); renderRent(); renderCpp(); syncAsk(); }
+
+load();
+buildAsk();
+renderAll();
+document.getElementById("ver").textContent = APP_VERSION;
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
