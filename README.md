@@ -18,5 +18,12 @@ Add to Home Screen to use it like an app.
 | `icon-180.png`, `icon-512.png` | Icons |
 | `SETUP.md` | How it works, where the rates came from, and what to re-check |
 
-Reward rates were taken from each issuer's own page and are dated in
-`SETUP.md`. They go stale — every rate is editable inside the app.
+Adding a card pulls it from a built-in catalog of about thirty common US cards,
+so it arrives knowing what it earns instead of as a blank 1x.
+
+Reward rates for the cards it ships with were taken from each issuer's own page
+and are dated in `SETUP.md`. They go stale — every rate is editable inside the
+app.
+
+Sharing the link is fine: everything lives in whichever browser opens it, so a
+friend gets their own private copy and their own cards.

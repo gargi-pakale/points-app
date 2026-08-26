@@ -15,6 +15,13 @@ Everything is stored in the browser on your own phone.
 Bump `APP_VERSION` in `index.html` and `CACHE` in `sw.js` together, or the phone
 keeps serving the stale cached build. (Same trap as Ted Tracker.)
 
+When a new build lands, the phone shows a blue **A new version is ready** bar at
+the top of the screen instead of swapping the app out mid-tap. The new service
+worker installs and then waits; tapping **Update** posts `SKIP_WAITING` to it and
+reloads once it takes over. The app re-checks for a new build whenever it comes
+back to the foreground, and hourly if left open. So bumping both version strings
+is what actually puts the bar in front of you — miss them and no one is told.
+
 ## Is a public repo safe here?
 
 Yes, with one rule: **no personal numbers in the source.**
@@ -102,12 +109,44 @@ Everything in that formula is editable in the **My cards** tab.
 - **Rent carries a 3% processing fee** for every card except Bilt. Without that
   the app happily recommended Venture X for rent, which loses money.
 
+## Adding a card
+
+**Add a card** opens a picker with about thirty of the common US cards, grouped
+by issuer and searchable. Picking one drops it in with its bonus categories,
+annual fee, foreign fee and point currency already filled in, then opens its
+editor so anything wrong can be corrected. The currency it earns (Amex MR, Citi
+ThankYou, Bonvoy, Hilton and so on) is added to **What a point is worth** only
+when a card that earns it is added, so that list stays short.
+
+The catalog lives in `CARD_CATALOG` in `index.html`. Its rates are the app's own
+starting point rather than a reading of anyone's account — each catalog card
+says so in its editor. The six cards the app ships with are the sourced ones.
+
+`Not in the list — set it up myself` is the old prompt-by-prompt flow, kept for
+anything the catalog has never heard of.
+
+## Sharing the link
+
+The link is safe to send to anyone. Everything lives in that browser's own local
+storage, so a friend who opens it gets their own private copy — nothing they
+change touches this one, and nothing is uploaded anywhere.
+
+What they inherit is the six starter cards, since those are what the app ships
+with. They switch off or delete the ones they don't hold and add their own from
+the picker. There is no per-person setup beyond that.
+
 ## Where the rates came from
 
-Every rate was taken from the issuer's own page (or the program terms) on
-**25 August 2026**, and each card shows its source inside **My cards**. Rates
-were not written from memory — an earlier version of this app was, and it was
-wrong in several places.
+Every rate for the six cards the app ships with was taken from the issuer's own
+page (or the program terms) on **25 August 2026**, and each card shows its
+source inside **My cards**. Rates were not written from memory — an earlier
+version of this app was, and it was wrong in several places.
+
+Because those rates were sourced rather than guessed, the app states them
+plainly. It used to ship every card marked "unconfirmed" with a banner asking
+the reader to go and verify them, which put the author's homework on the
+reader — that is gone. Staleness is handled by the dates above and by every
+number being editable.
 
 Corrections that research turned up:
 
