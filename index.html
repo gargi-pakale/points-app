@@ -59,7 +59,7 @@ section.on{display:block}
 /* ---- bottom tab bar ---- */
 nav{
   position:fixed;left:0;right:0;bottom:0;z-index:20;
-  display:grid;grid-template-columns:repeat(3,1fr);
+  display:grid;grid-template-columns:repeat(4,1fr);
   background:var(--surface);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom);
 }
@@ -138,12 +138,12 @@ table.mt tr.cap b{color:var(--muted)}
 .searchbar svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);
   width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:1.8;
   stroke-linecap:round;pointer-events:none}
-select,input[type=text],input[type=search],input[type=number]{
+select,input[type=text],input[type=search],input[type=number],input[type=date]{
   width:100%;padding:13px 14px;font-size:16px;color:var(--text);
   background:var(--surface);border:1px solid var(--line);border-radius:13px;
   appearance:none;-webkit-appearance:none;
 }
-input[type=text]:focus,input[type=search]:focus,input[type=number]:focus,select:focus{
+input[type=text]:focus,input[type=search]:focus,input[type=number]:focus,input[type=date]:focus,select:focus{
   outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--focus)}
 .searchbar input[type=text],.searchbar input[type=search]{padding-left:42px}
 select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
@@ -288,6 +288,49 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 .prow:disabled{opacity:.5;cursor:default}
 .prow:disabled .pa{color:var(--muted)}
 .custom-add{flex:none;margin:8px 0 0}
+
+/* ---- manually tracked point balances ---- */
+.balance-hero{background:linear-gradient(145deg,var(--ink),#344258);color:var(--onink);
+  border-radius:18px;padding:17px 18px;margin:10px 0 16px;box-shadow:var(--shadow)}
+.balance-hero .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;opacity:.65}
+.balance-hero .total{font-size:30px;line-height:1.1;font-weight:750;letter-spacing:-.025em;
+  margin-top:5px;font-variant-numeric:tabular-nums}
+.balance-hero .summary{font-size:12.5px;opacity:.7;margin-top:4px}
+.balance-group{margin:18px 0 4px}
+.balance-group-head{display:flex;align-items:center;gap:10px;padding:0 4px 5px}
+.balance-group-head .gicon{font-size:23px;width:28px;text-align:center;filter:grayscale(.15)}
+.balance-group-head h2{font-size:19px;margin:0;flex:1;letter-spacing:-.01em}
+.balance-group-head button{appearance:none;border:0;background:var(--surface-2);color:var(--accent);
+  width:44px;height:44px;border-radius:50%;font:700 23px/1 -apple-system,sans-serif;cursor:pointer}
+.balance-empty{border:1px dashed var(--line);border-radius:13px;color:var(--muted);
+  padding:14px;text-align:center;font-size:13px;background:var(--surface)}
+.balrow{display:flex;align-items:center;gap:11px;padding:13px 13px;min-height:72px;
+  width:100%;border:0;background:none;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.program-mark{width:43px;height:43px;border-radius:12px;color:#fff;display:flex;
+  align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:.02em;
+  flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15),0 1px 3px rgba(0,0,0,.16)}
+.balname{flex:1;min-width:0}
+.balname b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.balname span{display:block;color:var(--muted);font-size:12px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.balamount{flex:none;text-align:right;max-width:42%;font-variant-numeric:tabular-nums}
+.balamount b{display:block;font-size:19px;line-height:1.15;white-space:nowrap}
+.balamount span{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;white-space:nowrap}
+.balamount span.soon{color:var(--warn);font-weight:650}
+.balance-edit{padding:10px 14px 14px;border-top:1px solid var(--line)}
+.balance-edit .erow input,.balance-edit .erow select{width:min(58%,220px);flex:none}
+.balance-edit .erow input{text-align:right}
+.balance-privacy{display:flex;align-items:flex-start;gap:9px;background:var(--accbg);
+  color:var(--text);border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.4;margin:8px 0 12px}
+.balance-privacy span:first-child{color:var(--accent);font-weight:800}
+.program-picker .pi{width:43px;height:43px;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-size:12px;font-weight:800;box-shadow:none}
+.program-picker .prow{min-height:68px}
+@media(max-width:360px){
+  nav button{font-size:11px;padding-left:1px;padding-right:1px}
+  .balamount b{font-size:17px}
+}
 </style>
 </head>
 <body>
@@ -364,6 +407,15 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
       gargi-pakale.github.io domain and are not sent to a server. Never enter card numbers.
     </p>
   </section>
+
+  <!-- ============ POINT BALANCES ============ -->
+  <section id="tab-points">
+    <div class="balance-privacy"><span>&#10003;</span><span>Manual only. Balances stay in this browser and are never connected to your loyalty accounts.</span></div>
+    <div class="balance-hero" id="balance-summary"></div>
+    <div id="balance-groups"></div>
+    <button class="btn" id="addprogram">+ Add a points program</button>
+    <p class="hint" style="margin:0 4px 30px">The total is an inventory count only—one hotel point is not worth the same as one airline or card point.</p>
+  </section>
 </main>
 
 <div class="modal" id="picker" hidden>
@@ -384,16 +436,35 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
   </div>
 </div>
 
+<div class="modal" id="program-picker" hidden>
+  <div class="mbox program-picker" role="dialog" aria-modal="true" aria-labelledby="program-picker-title">
+    <div class="mhead">
+      <b id="program-picker-title">Add a points program</b>
+      <button type="button" class="xbtn" id="program-pickclose" aria-label="Close points program picker">&times;</button>
+    </div>
+    <p class="picker-note">Choose a popular program, then type your balance manually. No login or membership number is needed.</p>
+    <div class="searchbar" style="margin:10px 0">
+      <label class="sr-only" for="program-pickq">Search points programs</label>
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"></circle><line x1="13.5" y1="13.5" x2="18" y2="18"></line></svg>
+      <input type="search" id="program-pickq" aria-label="Search points programs"
+             placeholder="Try United, Hyatt, Chase..." autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="plist" id="program-picklist"></div>
+    <button type="button" class="btn quiet custom-add" id="program-pickcustom">Add a custom program</button>
+  </div>
+</div>
+
 <nav aria-label="Main sections">
   <button data-tab="sheet" class="on" aria-current="page"><span class="ic">&#9776;</span>Cheat sheet</button>
   <button data-tab="ask"><span class="ic">&#63;</span>Ask</button>
   <button data-tab="cards"><span class="ic">&#9635;</span>My cards</button>
+  <button data-tab="points"><span class="ic">&#9673;</span>Points</button>
 </nav>
 
 <script>
 "use strict";
-const APP_VERSION = "2.1.0";
-const SCHEMA_VERSION = 2;
+const APP_VERSION = "2.2.0";
+const SCHEMA_VERSION = 3;
 const DATA_VERSION = "2026-08-29";
 const STORE_KEY = "cardpicker.v1";
 
@@ -505,8 +576,8 @@ const DEFAULT_CARDS = [
            "At participating Bilt Dining restaurants Blue earns up to 4x; Bilt Travel earns 3x hotels and 2x flights; linked Lyft rides earn 3x.",
            "Bilt Cash is separate from points and does not convert automatically."],
     perk:{
-      rentalCar:{t:"Primary MasterRental coverage", priority:1, over:true,
-        b:"Bilt Blue includes primary Mastercard rental-car coverage. Confirm the current vehicle, country and benefit limits in your card's guide before booking."}
+      rentalCar:{t:"MasterRental coverage", priority:1,
+        b:"Coverage is secondary inside your country of residence and primary outside it. Decline the rental company's collision waiver and pay the full rental with Bilt; exclusions and limits apply."}
     },
     caveat:{
       rent:"You only earn points on rent by spending Bilt Cash to unlock them, up to 1x of the payment.",
@@ -654,6 +725,62 @@ const SEARCH_SHORTCUTS = [
 ];
 
 /* ============================================================
+   MANUAL POINT-BALANCE TRACKER
+   Programs are suggestions only; balances and expiration status
+   are entered by the user and never fetched from an account.
+   ============================================================ */
+const POINT_GROUPS = [
+  {id:"cards", name:"Card points", icon:"\u{1F4B3}"},
+  {id:"airlines", name:"Airlines", icon:"\u{2708}\u{FE0F}"},
+  {id:"hotels", name:"Hotels", icon:"\u{1F3E8}"},
+  {id:"other", name:"Other programs", icon:"\u{2B50}"}
+];
+
+const POINT_PROGRAMS = [
+  {id:"chase-ur", group:"cards", name:"Chase Ultimate Rewards", short:"Chase", initials:"UR", color:"#145f45"},
+  {id:"bilt-points", group:"cards", name:"Bilt Points", short:"Bilt", initials:"B", color:"#1b2430"},
+  {id:"capital-one-miles", group:"cards", name:"Capital One Miles", short:"Capital One", initials:"C1", color:"#8b1831"},
+  {id:"citi-thankyou", group:"cards", name:"Citi ThankYou Points", short:"Citi", initials:"TY", color:"#164c8a"},
+  {id:"amex-membership-rewards", group:"cards", name:"Amex Membership Rewards", short:"American Express", initials:"MR", color:"#176ca4"},
+  {id:"united-mileageplus", group:"airlines", name:"United MileagePlus", short:"United Airlines", initials:"UA", color:"#075aaa"},
+  {id:"american-aadvantage", group:"airlines", name:"American AAdvantage", short:"American Airlines", initials:"AA", color:"#b61c2e"},
+  {id:"delta-skymiles", group:"airlines", name:"Delta SkyMiles", short:"Delta Air Lines", initials:"DL", color:"#9b1230"},
+  {id:"flying-blue", group:"airlines", name:"Flying Blue", short:"Air France & KLM", initials:"FB", color:"#168bc1"},
+  {id:"southwest-rapid-rewards", group:"airlines", name:"Southwest Rapid Rewards", short:"Southwest Airlines", initials:"WN", color:"#304cb2"},
+  {id:"alaska-mileage-plan", group:"airlines", name:"Atmos Rewards", short:"Alaska & Hawaiian", initials:"AS", color:"#0b5369"},
+  {id:"aeroplan", group:"airlines", name:"Aeroplan", short:"Air Canada", initials:"AC", color:"#bd1e2d"},
+  {id:"jetblue-trueblue", group:"airlines", name:"JetBlue TrueBlue", short:"JetBlue", initials:"B6", color:"#174d8c"},
+  {id:"virgin-atlantic", group:"airlines", name:"Virgin Atlantic Flying Club", short:"Virgin Atlantic", initials:"VS", color:"#b10f3c"},
+  {id:"world-of-hyatt", group:"hotels", name:"World of Hyatt", short:"Hyatt", initials:"H", color:"#263f63"},
+  {id:"marriott-bonvoy", group:"hotels", name:"Marriott Bonvoy", short:"Marriott", initials:"M", color:"#562b2d"},
+  {id:"hilton-honors", group:"hotels", name:"Hilton Honors", short:"Hilton", initials:"H", color:"#172746"},
+  {id:"ihg-one-rewards", group:"hotels", name:"IHG One Rewards", short:"IHG", initials:"IHG", color:"#84344f"},
+  {id:"choice-privileges", group:"hotels", name:"Choice Privileges", short:"Choice Hotels", initials:"C", color:"#215e9e"},
+  {id:"wyndham-rewards", group:"hotels", name:"Wyndham Rewards", short:"Wyndham", initials:"W", color:"#4149a5"}
+];
+
+function pointAmount(value){ return Math.max(0, Math.round(finiteNumber(value, 0))); }
+function formatPoints(value){ return pointAmount(value).toLocaleString("en-US"); }
+function creditAmount(value){ return Math.max(0, Math.round(finiteNumber(value, 0) * 100) / 100); }
+function formatCredit(value){
+  return creditAmount(value).toLocaleString("en-US", {style:"currency", currency:"USD", minimumFractionDigits:0, maximumFractionDigits:2});
+}
+function expiryLabel(item, now){
+  if(item.expiryType === "never") return "does not expire";
+  if(item.expiryType !== "date" || !/^\d{4}-\d{2}-\d{2}$/.test(String(item.expiryDate || ""))) return "expiration unknown";
+  const today = now && typeof now.getFullYear === "function"
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date();
+  const expiry = new Date(item.expiryDate + "T00:00:00");
+  if(Number.isNaN(expiry.getTime())) return "expiration unknown";
+  const days = Math.ceil((expiry - today) / 86400000);
+  if(days < 0) return "expired";
+  if(days === 0) return "expires today";
+  if(days < 60) return "expires in " + days + (days === 1 ? " day" : " days");
+  if(days < 730) return "expires in " + (days / 30.44).toFixed(1) + " months";
+  return "expires " + expiry.toLocaleDateString("en-US", {month:"short", year:"numeric"});
+}
+
+/* ============================================================
    STATE
    ============================================================ */
 let S = null;
@@ -672,7 +799,8 @@ function freshState(){
     biltOption: "flexible",    // "flexible" | "housing"
     biltRoute: "rent",         // "rent" = convert to rent points, "credit" = partner credits
     biltCycleSpend: 0,
-    capSpend: {bofa:0}
+    capSpend: {bofa:0},
+    balances: []               // manually entered loyalty balances; never synced
   };
 }
 function load(){
@@ -689,6 +817,7 @@ function load(){
     if(!S.biltRoute) S.biltRoute = "rent";
     if(S.biltCycleSpend === undefined) S.biltCycleSpend = 0;
     if(!S.capSpend || typeof S.capSpend !== "object") S.capSpend = {bofa:0};
+    if(!Array.isArray(S.balances)) S.balances = [];
     migrate();
     applyRoute();
     save();
@@ -733,6 +862,24 @@ function migrate(){
     delete mine.verify;
     delete mine.verified;
   }
+  if(!Array.isArray(S.balances)) S.balances = [];
+  const validGroups = POINT_GROUPS.map(group => group.id);
+  S.balances = S.balances.filter(item => item && typeof item === "object").map((item, index) => ({
+    id:String(item.id || ("balance-" + index + "-" + Date.now())),
+    programId:String(item.programId || ""),
+    name:String(item.name || "Unnamed program"),
+    short:String(item.short || "Loyalty program"),
+    group:validGroups.includes(item.group) ? item.group : "other",
+    initials:String(item.initials || "P").slice(0, 3).toUpperCase(),
+    color:/^#[0-9a-f]{6}$/i.test(String(item.color || "")) ? item.color : "#3b4656",
+    balance:pointAmount(item.balance),
+    expiryType:["unknown","never","date"].includes(item.expiryType) ? item.expiryType : "unknown",
+    expiryDate:String(item.expiryDate || ""),
+    flightCredit:creditAmount(item.flightCredit),
+    creditExpiryType:["unknown","never","date"].includes(item.creditExpiryType) ? item.creditExpiryType : "unknown",
+    creditExpiryDate:String(item.creditExpiryDate || ""),
+    updated:String(item.updated || "")
+  }));
   S.schema = SCHEMA_VERSION;
   S.dataVersion = DATA_VERSION;
 }
@@ -1816,8 +1963,269 @@ pickcustom.onclick = () => {
   S.cards.push(card); save(); closePicker(); renderAll(); openCard(card.id);
 };
 
+/* ---- manual point balances ---- */
+const programPicker = document.getElementById("program-picker");
+const programPickq = document.getElementById("program-pickq");
+const programPickcustom = document.getElementById("program-pickcustom");
+let programGroupFilter = null;
+let programPickerOpener = null;
+
+function balanceGroup(id){ return POINT_GROUPS.find(group => group.id === id) || POINT_GROUPS[3]; }
+function balanceUpdatedLabel(item){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(item.updated || "")) return "Not updated yet";
+  const date = new Date(item.updated + "T00:00:00");
+  return "Updated " + date.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+}
+function compactExpiry(item){
+  if(item.expiryType === "never") return "no expiry";
+  if(item.expiryType !== "date" || !/^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate || "")) return "";
+  const date = new Date(item.expiryDate + "T00:00:00");
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", {month:"short", year:"2-digit"});
+}
+function expiryIsSoon(item){
+  if(item.expiryType !== "date" || !/^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate || "")) return false;
+  const days = Math.ceil((new Date(item.expiryDate + "T00:00:00") - new Date()) / 86400000);
+  return days <= 60;
+}
+function renderBalanceSummary(){
+  const total = S.balances.reduce((sum, item) => sum + pointAmount(item.balance), 0);
+  const credits = S.balances.reduce((sum, item) => sum + (item.group === "airlines" ? creditAmount(item.flightCredit) : 0), 0);
+  const host = document.getElementById("balance-summary");
+  host.innerHTML = '<div class="eyebrow">Total points tracked</div><div class="total">' +
+    formatPoints(total) + '</div><div class="summary">' + S.balances.length +
+    (S.balances.length === 1 ? ' program' : ' programs') + ' · ' + formatCredit(credits) +
+    ' in airline credits · manually updated</div>';
+}
+
+function renderBalances(){
+  renderBalanceSummary();
+  const host = document.getElementById("balance-groups");
+  const openIds = [...host.querySelectorAll(".card.open")].map(element => element.dataset.id);
+  host.innerHTML = "";
+
+  POINT_GROUPS.forEach(group => {
+    const wrap = document.createElement("div");
+    wrap.className = "balance-group";
+    wrap.innerHTML = '<div class="balance-group-head"><span class="gicon" aria-hidden="true">' +
+      group.icon + '</span><h2>' + esc(group.name) + '</h2><button type="button" aria-label="Add ' +
+      esc(group.name) + ' program">+</button></div>';
+    wrap.querySelector("button").onclick = event => openProgramPicker(group.id, event.currentTarget);
+
+    const items = S.balances.filter(item => item.group === group.id);
+    if(!items.length){
+      const empty = document.createElement("div");
+      empty.className = "balance-empty";
+      empty.textContent = "No " + group.name.toLowerCase() + " tracked yet.";
+      wrap.appendChild(empty);
+    }
+
+    items.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "card" + (openIds.includes(item.id) ? " open" : "");
+      card.dataset.id = item.id;
+      const expires = expiryLabel(item);
+      const hasCredit = item.group === "airlines" && creditAmount(item.flightCredit) > 0;
+      const creditItem = {expiryType:item.creditExpiryType, expiryDate:item.creditExpiryDate};
+      const amountStatus = hasCredit
+        ? formatCredit(item.flightCredit) + " credit" + (compactExpiry(creditItem) ? " · " + compactExpiry(creditItem) : "")
+        : expires;
+      card.innerHTML = '<button type="button" class="balrow" aria-expanded="' +
+        (openIds.includes(item.id) ? 'true' : 'false') + '">' +
+        '<span class="program-mark" style="background:' + safeColor(item.color) + '">' + esc(item.initials) + '</span>' +
+        '<span class="balname"><b>' + esc(item.name) + '</b><span>' + esc(item.short) + '</span></span>' +
+        '<span class="balamount"><b>' + formatPoints(item.balance) + '</b><span' +
+        (expiryIsSoon(hasCredit ? creditItem : item) ? ' class="soon"' : '') + '>' + esc(amountStatus) + '</span></span>' +
+        '<span class="chev">&#9656;</span></button><div class="detail"><div class="balance-edit"></div></div>';
+      card.querySelector(".balrow").onclick = event => {
+        card.classList.toggle("open");
+        event.currentTarget.setAttribute("aria-expanded", card.classList.contains("open") ? "true" : "false");
+      };
+      fillBalanceEditor(card.querySelector(".balance-edit"), item);
+      wrap.appendChild(card);
+    });
+    host.appendChild(wrap);
+  });
+}
+
+function fillBalanceEditor(host, item){
+  const makeRow = label => {
+    const row = document.createElement("label"); row.className = "erow";
+    const text = document.createElement("span"); text.textContent = label;
+    row.appendChild(text); host.appendChild(row); return row;
+  };
+
+  const balanceRow = makeRow("Current balance");
+  const balanceInput = document.createElement("input");
+  balanceInput.type = "number"; balanceInput.min = "0"; balanceInput.step = "1";
+  balanceInput.inputMode = "numeric"; balanceInput.value = pointAmount(item.balance);
+  balanceInput.setAttribute("aria-label", item.name + " current points balance");
+  balanceInput.oninput = () => {
+    item.balance = pointAmount(balanceInput.value); item.updated = new Date().toISOString().slice(0,10);
+    renderBalanceSummary(); save();
+  };
+  balanceInput.onchange = () => { item.updated = new Date().toISOString().slice(0,10); save(); renderBalances(); openBalance(item.id); };
+  balanceRow.appendChild(balanceInput);
+
+  const expiryRow = makeRow("Expiration");
+  const expirySelect = document.createElement("select");
+  expirySelect.setAttribute("aria-label", item.name + " expiration status");
+  [["unknown","Unknown"],["never","Does not expire"],["date","Specific date"]].forEach(([value,label]) => {
+    const option = document.createElement("option"); option.value = value; option.textContent = label;
+    option.selected = item.expiryType === value; expirySelect.appendChild(option);
+  });
+  expirySelect.onchange = () => { item.expiryType = expirySelect.value; save(); renderBalances(); openBalance(item.id); };
+  expiryRow.appendChild(expirySelect);
+
+  if(item.expiryType === "date"){
+    const dateRow = makeRow("Expiration date");
+    const dateInput = document.createElement("input"); dateInput.type = "date";
+    dateInput.value = item.expiryDate || ""; dateInput.setAttribute("aria-label", item.name + " expiration date");
+    dateInput.onchange = () => { item.expiryDate = dateInput.value; save(); renderBalances(); openBalance(item.id); };
+    dateRow.appendChild(dateInput);
+  }
+
+  if(item.group === "airlines"){
+    const creditRow = makeRow("Flight credit ($)");
+    const creditInput = document.createElement("input"); creditInput.type = "number";
+    creditInput.min = "0"; creditInput.step = "0.01"; creditInput.inputMode = "decimal";
+    creditInput.value = creditAmount(item.flightCredit);
+    creditInput.setAttribute("aria-label", item.name + " flight credit balance in dollars");
+    creditInput.oninput = () => {
+      item.flightCredit = creditAmount(creditInput.value); item.updated = new Date().toISOString().slice(0,10);
+      renderBalanceSummary(); save();
+    };
+    creditInput.onchange = () => { item.updated = new Date().toISOString().slice(0,10); save(); renderBalances(); openBalance(item.id); };
+    creditRow.appendChild(creditInput);
+
+    const creditExpiryRow = makeRow("Credit expiration");
+    const creditExpirySelect = document.createElement("select");
+    creditExpirySelect.setAttribute("aria-label", item.name + " flight credit expiration status");
+    [["unknown","Unknown"],["never","Does not expire"],["date","Specific date"]].forEach(([value,label]) => {
+      const option = document.createElement("option"); option.value = value; option.textContent = label;
+      option.selected = (item.creditExpiryType || "unknown") === value; creditExpirySelect.appendChild(option);
+    });
+    creditExpirySelect.onchange = () => { item.creditExpiryType = creditExpirySelect.value; save(); renderBalances(); openBalance(item.id); };
+    creditExpiryRow.appendChild(creditExpirySelect);
+
+    if(item.creditExpiryType === "date"){
+      const creditDateRow = makeRow("Credit expiration date");
+      const creditDateInput = document.createElement("input"); creditDateInput.type = "date";
+      creditDateInput.value = item.creditExpiryDate || "";
+      creditDateInput.setAttribute("aria-label", item.name + " flight credit expiration date");
+      creditDateInput.onchange = () => { item.creditExpiryDate = creditDateInput.value; save(); renderBalances(); openBalance(item.id); };
+      creditDateRow.appendChild(creditDateInput);
+    }
+  }
+
+  const nameRow = makeRow("Program name");
+  const nameInput = document.createElement("input"); nameInput.type = "text";
+  nameInput.value = item.name; nameInput.setAttribute("aria-label", "Program name");
+  nameInput.onchange = () => { if(nameInput.value.trim()) item.name = nameInput.value.trim(); save(); renderBalances(); openBalance(item.id); };
+  nameRow.appendChild(nameInput);
+
+  const groupRow = makeRow("Group");
+  const groupSelect = document.createElement("select"); groupSelect.setAttribute("aria-label", item.name + " group");
+  POINT_GROUPS.forEach(group => {
+    const option = document.createElement("option"); option.value = group.id; option.textContent = group.name;
+    option.selected = item.group === group.id; groupSelect.appendChild(option);
+  });
+  groupSelect.onchange = () => { item.group = groupSelect.value; save(); renderBalances(); openBalance(item.id); };
+  groupRow.appendChild(groupSelect);
+
+  const updated = document.createElement("p"); updated.className = "hint";
+  updated.textContent = balanceUpdatedLabel(item) + ". No account is connected."; host.appendChild(updated);
+  const del = document.createElement("button"); del.type = "button"; del.className = "btn quiet";
+  del.textContent = "Delete " + item.name;
+  del.onclick = () => {
+    if(!confirm("Delete " + item.name + " from your points tracker?")) return;
+    S.balances = S.balances.filter(balance => balance !== item); save(); renderBalances();
+  };
+  host.appendChild(del);
+}
+
+function openBalance(id){
+  const card = document.querySelector('#balance-groups .card[data-id="' + id + '"]');
+  if(!card) return;
+  card.classList.add("open");
+  const button = card.querySelector(".balrow"); if(button) button.setAttribute("aria-expanded", "true");
+}
+
+function addPointProgram(template){
+  if(S.balances.some(item => item.programId === template.id)) return;
+  const item = {
+    id:"balance-" + template.id, programId:template.id, name:template.name, short:template.short,
+    group:template.group, initials:template.initials, color:template.color,
+    balance:0, expiryType:"unknown", expiryDate:"", flightCredit:0,
+    creditExpiryType:"unknown", creditExpiryDate:"", updated:""
+  };
+  S.balances.push(item); save(); closeProgramPicker(); renderBalances(); openBalance(item.id);
+  const input = document.querySelector('#balance-groups .card[data-id="' + item.id + '"] input[type="number"]');
+  if(input){ input.focus(); input.select(); }
+}
+
+function renderProgramPicker(){
+  const query = normaliseSearch(programPickq.value);
+  const terms = query.split(" ").filter(Boolean);
+  const host = document.getElementById("program-picklist"); host.innerHTML = "";
+  const owned = new Set(S.balances.map(item => item.programId));
+  let shown = 0, currentGroup = null;
+  POINT_PROGRAMS.forEach(program => {
+    if(programGroupFilter && program.group !== programGroupFilter) return;
+    const haystack = normaliseSearch([program.name, program.short, program.initials].join(" "));
+    if(terms.length && !terms.every(term => haystack.includes(term))) return;
+    shown++;
+    if(currentGroup !== program.group){
+      currentGroup = program.group;
+      const heading = document.createElement("div"); heading.className = "pgroup";
+      heading.textContent = balanceGroup(program.group).name; host.appendChild(heading);
+    }
+    const isOwned = owned.has(program.id);
+    const row = document.createElement("button"); row.type = "button"; row.className = "prow"; row.disabled = isOwned;
+    row.setAttribute("aria-label", (isOwned ? "Already tracking: " : "Add ") + program.name);
+    row.innerHTML = '<span class="pi" style="background:' + safeColor(program.color) + '">' + esc(program.initials) + '</span>' +
+      '<span class="pl"><b>' + esc(program.name) + '</b><span>' + esc(program.short) + '</span></span>' +
+      '<span class="pa">' + (isOwned ? "Added" : "Add") + '</span>';
+    if(!isOwned) row.onclick = () => addPointProgram(program);
+    host.appendChild(row);
+  });
+  if(!shown){
+    const empty = document.createElement("div"); empty.className = "nohit";
+    empty.textContent = 'No popular program matches "' + programPickq.value.trim() + '" yet.'; host.appendChild(empty);
+  }
+  programPickcustom.textContent = query ? 'Add "' + programPickq.value.trim() + '" as a custom program' : "Add a custom program";
+}
+
+function openProgramPicker(group, opener){
+  programGroupFilter = group || null; programPickerOpener = opener || document.getElementById("addprogram");
+  programPickq.value = ""; renderProgramPicker(); programPicker.hidden = false;
+  document.body.style.overflow = "hidden"; setTimeout(() => programPickq.focus(), 0);
+}
+function closeProgramPicker(){
+  programPicker.hidden = true; document.body.style.overflow = "";
+  if(programPickerOpener) programPickerOpener.focus();
+}
+document.getElementById("addprogram").onclick = event => openProgramPicker(null, event.currentTarget);
+document.getElementById("program-pickclose").onclick = closeProgramPicker;
+programPickq.oninput = renderProgramPicker;
+programPicker.onclick = event => { if(event.target === programPicker) closeProgramPicker(); };
+document.addEventListener("keydown", event => {
+  if(event.key === "Escape" && !programPicker.hidden) closeProgramPicker();
+});
+programPickcustom.onclick = () => {
+  const name = programPickq.value.trim();
+  if(!name){ programPickq.placeholder = "Type the program name first"; programPickq.focus(); return; }
+  const group = programGroupFilter || "other";
+  const item = {
+    id:"balance-custom-" + Date.now(), programId:"", name, short:"Custom program", group,
+    initials:name.split(/\s+/).map(word => word[0]).join("").slice(0,3).toUpperCase() || "P",
+    color:"#3b4656", balance:0, expiryType:"unknown", expiryDate:"", flightCredit:0,
+    creditExpiryType:"unknown", creditExpiryDate:"", updated:""
+  };
+  S.balances.push(item); save(); closeProgramPicker(); renderBalances(); openBalance(item.id);
+};
+
 document.getElementById("reset").onclick = () => {
-  if(!confirm("Reset cards, reward values, rent, spending trackers and preferences to the defaults?")) return;
+  if(!confirm("Reset cards, point balances, flight credits, reward values, rent, spending trackers and preferences to the defaults?")) return;
   S = freshState(); save(); renderAll();
 };
 document.getElementById("showall").onclick = () => {
@@ -1835,7 +2243,8 @@ document.getElementById("flipval").onclick = () => {
 const SUBLINES = {
   sheet: "Tap a category to see the full ranking",
   ask:   "Tell it what you're buying",
-  cards: "Add, edit or switch off a card"
+  cards: "Add, edit or switch off a card",
+  points:"Track points and flight credits manually"
 };
 document.querySelectorAll("nav button").forEach(b => {
   b.onclick = () => {
@@ -1849,11 +2258,12 @@ document.querySelectorAll("nav button").forEach(b => {
     if(b.dataset.tab === "cards"){
       renderCards(); renderRent(); renderCpp();
     }
+    if(b.dataset.tab === "points") renderBalances();
     window.scrollTo(0, 0);
   };
 });
 
-function renderAll(){ renderSheet(); renderCards(); renderRent(); renderCpp(); syncAsk(); }
+function renderAll(){ renderSheet(); renderCards(); renderRent(); renderCpp(); renderBalances(); syncAsk(); }
 
 load();
 buildAsk();

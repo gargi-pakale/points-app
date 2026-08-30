@@ -11,6 +11,7 @@ assert.ok(script, "index.html contains the application script");
 const core = script.split("/* ---- add a card ---- */")[0] + `
 globalThis.__whichCardTest = {
   APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, CARD_CATALOG, CARD_LIBRARY, MERCHANTS, SEARCH_SHORTCUTS,
+  POINT_GROUPS, POINT_PROGRAMS, pointAmount, formatPoints, creditAmount, formatCredit, expiryLabel,
   freshState, load, migrate, applyRoute, rank, headline, baseHeadline,
   findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, protectionRunner, esc,
   setState(value){ S = value; }, getState(){ return S; }
@@ -177,7 +178,42 @@ test("schema migration refreshes shipped rates but preserves personal multiplier
   assert.equal(state.cards.find(c => c.id === "bilt").network, "Mastercard");
   assert.equal(state.cards.find(c => c.id === "bofa").mult, 1.25);
   assert.equal(state.cards.some(c => c.verified), false);
-  assert.equal(state.schema, 2);
+  assert.equal(state.schema, 3);
+});
+
+test("manual points tracker starts empty and contains a valid popular-program library", () => {
+  const state = reset();
+  assert.deepEqual([...state.balances], []);
+  const groups = new Set(app.POINT_GROUPS.map(group => group.id));
+  const programs = new Set(app.POINT_PROGRAMS.map(program => program.id));
+  assert.equal(programs.size, app.POINT_PROGRAMS.length);
+  for(const program of app.POINT_PROGRAMS) assert.ok(groups.has(program.group), `${program.id} has a valid group`);
+  assert.ok(app.POINT_PROGRAMS.some(program => program.id === "united-mileageplus"));
+  assert.ok(app.POINT_PROGRAMS.some(program => program.id === "world-of-hyatt"));
+});
+
+test("manual point balances and airline credits migrate safely without account data", () => {
+  const state = reset({balances:[{
+    id:"balance-united", programId:"united-mileageplus", name:"United MileagePlus",
+    short:"United Airlines", group:"airlines", initials:"ua", color:"#075aaa",
+    balance:125689.4, expiryType:"never", flightCredit:246.789,
+    creditExpiryType:"date", creditExpiryDate:"2027-06-01"
+  }]});
+  app.migrate();
+  assert.equal(state.balances[0].balance, 125689);
+  assert.equal(state.balances[0].flightCredit, 246.79);
+  assert.equal(state.balances[0].initials, "UA");
+  assert.equal(state.balances[0].creditExpiryDate, "2027-06-01");
+  assert.equal("accountNumber" in state.balances[0], false);
+});
+
+test("manual balance formatting and expiration labels are deterministic", () => {
+  assert.equal(app.formatPoints(125689.4), "125,689");
+  assert.equal(app.formatCredit(246.789), "$246.79");
+  const now = new Date(2026, 0, 1);
+  assert.equal(app.expiryLabel({expiryType:"never"}, now), "does not expire");
+  assert.equal(app.expiryLabel({expiryType:"unknown"}, now), "expiration unknown");
+  assert.equal(app.expiryLabel({expiryType:"date", expiryDate:"2026-01-02"}, now), "expires in 1 day");
 });
 
 test("v2 user overrides survive migration while unmarked shipped values refresh", () => {
@@ -222,6 +258,8 @@ test("rental protection priorities keep Venture X first and Sapphire second", ()
   assert.equal(app.protectionRunner("rentalAgency", "ventx", rentalList).c.id, "csp");
   cards.find(c => c.id === "ventx").on = false;
   assert.equal(app.overridingPerk("rentalCar").c.id, "csp");
+  cards.find(c => c.id === "csp").on = false;
+  assert.equal(app.overridingPerk("rentalCar"), null);
 });
 
 test("HTML escaping neutralizes stored custom names", () => {
@@ -251,5 +289,8 @@ test("primary mobile controls expose names and state to assistive technology", (
   assert.doesNotMatch(html, /id="unver"|unconfirmed rate/i);
   assert.match(html, /role="dialog" aria-modal="true"/);
   assert.match(html, /id="pickq" aria-label="Search card library"/);
+  assert.match(html, /id="program-pickq" aria-label="Search points programs"/);
+  assert.match(html, /Manual only\. Balances stay in this browser/);
+  assert.match(html, /data-tab="points"/);
   assert.doesNotMatch(html, /prompt\(/);
 });

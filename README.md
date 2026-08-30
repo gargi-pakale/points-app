@@ -27,3 +27,9 @@ Reward rates were taken from each issuer's own page and are dated in
 is included as a sourced template; typing its name (or “Citi Strata Primer”)
 filters to it and one tap fills its rewards, fee, network and benefits. Cards
 without a sourced template can still be added blank and edited in place.
+
+The **Points** tab is a manual loyalty-wallet tracker inspired by dedicated
+points apps, without connecting any accounts. Add a popular card, airline or
+hotel program, enter its points and optional expiration date, and separately
+track airline flight-credit dollars and their expiration. All balances start
+empty and remain only in that browser's local storage.

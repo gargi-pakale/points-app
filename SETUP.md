@@ -26,12 +26,10 @@ rates — all of it already public on the issuers' own websites. There are no
 account numbers, no card numbers, no logins, no API keys, no email addresses.
 Nothing here could be used against you.
 
-What must NOT go in is anything specific to you. Your rent was briefly
-hardcoded as a default and has been removed — `rent` now ships as `0` and you
-enter it on your phone, where it stays in that phone's local storage and is
-never uploaded anywhere. Keep it that way. If you later add anything personal —
-a real balance, a statement date, a credit limit — take it out before pushing,
-or move the repo to private.
+What must NOT go in is anything specific to you. Rent, points and flight-credit
+balances all ship empty or as zero; you enter them on your phone, where they
+stay in that browser's local storage and are never uploaded. Keep real balances,
+membership IDs, account numbers and credentials out of the source files.
 
 The one mild consideration left is that a public repo shows which six cards you
 hold. That is not sensitive on its own, but if it bothers you the alternative is
@@ -72,15 +70,29 @@ The library stays deliberately curated: an unknown card can be added blank and
 edited in the same card editor, but the app does not pretend an unsourced rate
 is trustworthy.
 
+## Tracking points and airline credits
+
+The **Points** tab is intentionally manual—there is no Plaid-style connection,
+issuer login, scraping or membership-number field. Its searchable library
+contains common transferable currencies, airlines and hotels. Each tracked
+program stores a manually entered point balance and optional expiration status.
+Airline programs additionally store a flight-credit dollar balance and a
+separate optional expiration date.
+
+The headline total is only an inventory count; it does not imply that unlike
+point currencies have equal value. The flight-credit total is shown separately.
+New users always start with an empty tracker, so personal balances are never
+published as defaults or shared with another device.
+
 ## Benefits that beat points
 
 Some cards carry protections worth far more than any rewards difference, so the
 app shows them as their own panel and marks one "worth more than the points"
 when it should override the winner. Rental cars are the clearest case: both
-Venture X (primary, up to $75,000), Sapphire Preferred (primary, up to
-$60,000) and Bilt Blue (primary MasterRental; check the current benefits guide
-for limits) can let you decline the rental counter's collision waiver. The app
-puts Venture X first and Sapphire second for a normal eligible rental. The same
+Venture X (primary, up to $75,000) and Sapphire Preferred (primary, up to
+$60,000) can let you decline the rental counter's collision waiver. Bilt Blue's
+current MasterRental guide is secondary inside your country of residence and
+primary outside it. The app puts Venture X first and Sapphire second for a normal eligible rental. The same
 logic can put United Explorer ahead on United flights when its checked-bag
 benefit applies.
 
