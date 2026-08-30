@@ -10,9 +10,9 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script, "index.html contains the application script");
 const core = script.split("/* ---- add a card ---- */")[0] + `
 globalThis.__whichCardTest = {
-  APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, MERCHANTS, SEARCH_SHORTCUTS,
+  APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, CARD_CATALOG, CARD_LIBRARY, MERCHANTS, SEARCH_SHORTCUTS,
   freshState, load, migrate, applyRoute, rank, headline, baseHeadline,
-  findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, esc,
+  findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, protectionRunner, esc,
   setState(value){ S = value; }, getState(){ return S; }
 };`;
 
@@ -102,18 +102,20 @@ test("issuer portal categories cannot award another issuer's portal rate", () =>
   assert.deepEqual([...app.rank("flightsChase").list.map(x => x.c.id)], ["csp", "prime"]);
   assert.deepEqual([...app.rank("flightsCapone").list.map(x => x.c.id)], ["ventx"]);
   assert.deepEqual([...app.rank("hotelsBilt").list.map(x => x.c.id)], ["bilt"]);
+  assert.deepEqual([...app.rank("hotelsCiti").list.map(x => x.c.id)], []);
   assert.equal(app.CATS.some(c => c.id === "flightsPortal" || c.id === "hotelsPortal"), false);
 });
 
 test("every shipped reward, caveat and protection points to a real category", () => {
   const ids = new Set(app.CATS.map(c => c.id));
   assert.equal(ids.size, app.CATS.length, "category ids are unique");
-  const cardIds = new Set(app.DEFAULT_CARDS.map(c => c.id));
-  assert.equal(cardIds.size, app.DEFAULT_CARDS.length, "card ids are unique");
+  const allCards = [...app.DEFAULT_CARDS, ...app.CARD_CATALOG];
+  const cardIds = new Set(allCards.map(c => c.id));
+  assert.equal(cardIds.size, allCards.length, "card ids are unique");
   for(const category of app.CATS){
     for(const cardId of category.eligibleIds || []) assert.ok(cardIds.has(cardId), `${category.id}.${cardId} is valid`);
   }
-  for(const card of app.DEFAULT_CARDS){
+  for(const card of allCards){
     for(const group of [card.earn, card.caveat, card.perk, card.feeFree]){
       for(const id of Object.keys(group || {})) assert.ok(ids.has(id), `${card.id}.${id} is valid`);
     }
@@ -132,10 +134,35 @@ test("typed merchant search resolves exact intent instead of first substring", (
   assert.equal(app.findSearchHit("online").cat, "online");
   assert.equal(app.findSearchHit("online").how, "online");
   assert.equal(app.findSearchHit("Whole Foods").cat, "amazon");
-  assert.equal(app.findSearchHit("Costco Travel rental car").cat, "rentalCar");
+  assert.equal(app.findSearchHit("Costco Travel rental car").cat, "rentalAgency");
   assert.equal(app.findSearchHit("Costco Travel rental car").how, "online");
+  assert.equal(app.findSearchHit("Expedia").cat, "travelAgency");
+  assert.equal(app.findSearchHit("Citi Travel hotel").cat, "hotelsCiti");
+  assert.equal(app.findSearchHit("Citi Travel"), null);
   assert.equal(app.findSearchHit("Capital One Travel"), null);
   assert.equal(app.findSearchHit("zzzz-not-a-merchant"), null);
+});
+
+test("Citi Strata Premier template is complete and ranks only eligible Citi Travel purchases at 10x", () => {
+  const state = reset();
+  const template = app.CARD_CATALOG.find(card => card.id === "citi-strata-premier");
+  assert.ok(template);
+  assert.equal(template.cur, "citi");
+  assert.equal(template.network, "Mastercard");
+  assert.equal(template.af, 95);
+  assert.equal(template.ftf, 0);
+  assert.equal(template.earn.hotelsCiti, 10);
+  assert.equal(template.earn.rentalCiti, 10);
+  assert.equal(template.earn.attractionsCiti, 10);
+  assert.equal(template.earn.travelAgency, 3);
+  assert.equal(template.earn.rentalAgency, 3);
+  state.cards.push({...JSON.parse(JSON.stringify(template)), on:true});
+  state.cpp.citi = {name:"Citi ThankYou Points", cpp:1.7};
+  assert.equal(cardResult("hotelsCiti", template.id).mult, 10);
+  assert.equal(cardResult("travelAgency", template.id).mult, 3);
+  assert.equal(cardResult("rentalAgency", template.id).mult, 3);
+  assert.equal(cardResult("travelOther", template.id).mult, 1);
+  assert.deepEqual([...app.rank("hotelsCiti").list.map(x => x.c.id)], [template.id]);
 });
 
 test("schema migration refreshes shipped rates but preserves personal multiplier", () => {
@@ -188,6 +215,11 @@ test("rental protection priorities keep Venture X first and Sapphire second", ()
   assert.equal(cards.find(c => c.id === "csp").perk.rentalCar.priority, 2);
   assert.equal(cards.find(c => c.id === "bilt").perk.rentalCar.priority, 1);
   assert.equal(app.overridingPerk("rentalCar").c.id, "ventx");
+  assert.equal(app.overridingPerk("rentalAgency").c.id, "ventx");
+  const citi = {...JSON.parse(JSON.stringify(app.CARD_CATALOG[0])), on:true};
+  cards.push(citi);
+  const rentalList = app.rank("rentalAgency").list;
+  assert.equal(app.protectionRunner("rentalAgency", "ventx", rentalList).c.id, "csp");
   cards.find(c => c.id === "ventx").on = false;
   assert.equal(app.overridingPerk("rentalCar").c.id, "csp");
 });
@@ -217,4 +249,7 @@ test("primary mobile controls expose names and state to assistive technology", (
   assert.match(html, /aria-expanded=/);
   assert.match(html, /aria-pressed=/);
   assert.doesNotMatch(html, /id="unver"|unconfirmed rate/i);
+  assert.match(html, /role="dialog" aria-modal="true"/);
+  assert.match(html, /id="pickq" aria-label="Search card library"/);
+  assert.doesNotMatch(html, /prompt\(/);
 });

@@ -22,3 +22,8 @@ Add to Home Screen to use it like an app.
 
 Reward rates were taken from each issuer's own page and are dated in
 `SETUP.md`. They go stale — every rate is editable inside the app.
+
+**Add a card** opens a searchable, phone-friendly library. Citi Strata Premier
+is included as a sourced template; typing its name (or “Citi Strata Primer”)
+filters to it and one tap fills its rewards, fee, network and benefits. Cards
+without a sourced template can still be added blank and edited in place.

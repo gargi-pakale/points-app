@@ -54,10 +54,23 @@ and Pages picks it up in about a minute.
 ## Reading the numbers
 
 The big number is the rate the card itself quotes: **3x** for a points card,
-**4.5%** for a cash-back card. The smaller grey number under it is what that is
-worth in cash terms once points are valued, and that smaller number is what the
-ranking actually sorts on. Bilt shows as **1x +4%** because it earns points and
-Bilt Cash at the same time.
+**4.5%** for a cash-back card. Comparable cash values are used only behind the
+scenes to rank unlike currencies; point cards stay displayed as x per dollar.
+Bilt shows **2.33x** when Flexible Bilt Cash is being converted to housing
+points and the entered housing ceiling has not been reached.
+
+## Adding a card
+
+**Add a card** opens a searchable bottom sheet instead of a chain of browser
+prompts. Existing sourced cards appear as Added. Typing filters the list as you
+type; `Citi Strata Premier` (including the common `Primer` typo) is a sourced
+one-tap template. Adding it fills Citi ThankYou Points, $95 annual fee, no
+foreign transaction fee, Mastercard network, 10x Citi Travel categories, 3x
+everyday/travel categories, 1x base earnings and relevant travel protections.
+
+The library stays deliberately curated: an unknown card can be added blank and
+edited in the same card editor, but the app does not pretend an unsourced rate
+is trustworthy.
 
 ## Benefits that beat points
 
@@ -122,8 +135,14 @@ Important distinctions:
   EV charging and 3x on vacation rentals (Airbnb, Vrbo), neither of which it had
   before. It also earns 5x on Lyft through 30 September 2027.
 - **Issuer portals are separate categories.** Chase rates apply only through
-  Chase Travel, Capital One rates only through Capital One Travel, and Bilt
-  rates only through Bilt Travel.
+  Chase Travel, Capital One rates only through Capital One Travel, Bilt rates
+  only through Bilt Travel, and Citi's 10x only to eligible Citi Travel hotels,
+  rental cars and attractions.
+- **Citi Strata Premier earns 10x only on Citi Travel hotels, rental cars and
+  attractions; 3x on air travel, other hotels, restaurants, supermarkets,
+  gas/EV charging and qualifying travel agencies; and 1x otherwise.** Its
+  MasterRental coverage is secondary within the renter's country of residence
+  and primary outside it.
 - **Bilt Blue earns 4x at participating Bilt Dining restaurants, 3x on hotels
   through Bilt Travel, 2x on flights through Bilt Travel and 3x on linked Lyft.**
 - **BofA's 3% choice category and 2% grocery/wholesale category share the first
@@ -160,15 +179,16 @@ you value another available Bilt Cash redemption.
 
 Run `npm test` before publishing. The suite covers United, both Bilt options,
 the BofA cap, Costco network acceptance, issuer portals, merchant search,
-foreign fees, migrations, empty-card persistence, rental priorities and HTML
-escaping.
+the Citi Strata Premier template, foreign fees, migrations, empty-card
+persistence, rental priorities and HTML escaping.
 
 ## Things to check on, with dates
 
 - **Point values are still estimates.** The earn rates are sourced; what a point
-  is *worth* is a judgement call. Chase, Bilt and Capital One are set to 1.8c
-  and United to 1.3c, which assumes you transfer to partners. Amazon points are
-  fixed at 1c by Amazon, so that one is exact. Tune them in **My cards**.
+  is *worth* is a judgement call. Chase, Bilt and Capital One are set to 1.8c,
+  Citi to 1.7c and United to 1.3c, which assumes you transfer to partners.
+  Amazon points are fixed at 1c by Amazon, so that one is exact. Tune them in
+  **My cards**.
 - **BofA relationship multiplier is 1.5, and is temporary.** Expected to drop to
   1.25 around **November 2026**. Change the one field and everything recalculates.
   Online shopping goes 4.5% -> 3.75%.

@@ -244,6 +244,7 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
 .erow{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px}
 .erow span{flex:1}
 .erow input{width:78px;flex:none;padding:8px;text-align:right;font-size:15px}
+.erow input.wide{width:min(64%,260px);text-align:left}
 .erow .x{color:var(--muted);font-size:18px;padding:8px;cursor:pointer;flex:none;
   border:0;background:none;min-width:44px;min-height:44px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
@@ -260,6 +261,33 @@ button:focus-visible,[role="button"]:focus-visible,input:focus-visible,select:fo
 .btn.quiet{color:var(--muted);font-weight:500}
 h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   color:var(--muted);margin:22px 4px 2px}
+
+/* ---- searchable add-a-card sheet ---- */
+.modal{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.48);padding-top:env(safe-area-inset-top)}
+.modal[hidden]{display:none}
+.mbox{background:var(--bg);width:100%;max-width:560px;height:min(88vh,760px);
+  border-radius:20px 20px 0 0;display:flex;flex-direction:column;
+  padding:0 14px calc(env(safe-area-inset-bottom) + 12px);box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.mhead{display:flex;align-items:center;gap:10px;padding:14px 2px 2px;flex:none}
+.mhead b{flex:1;font-size:18px}
+.xbtn{appearance:none;border:0;background:var(--surface-2);color:var(--text);
+  width:44px;height:44px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;flex:none}
+.picker-note{color:var(--muted);font-size:12.5px;line-height:1.4;margin:0 2px 2px}
+.plist{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:2px 0 8px}
+.pgroup{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);padding:11px 4px 6px}
+.prow{display:flex;align-items:center;gap:11px;width:100%;padding:12px;margin:0 0 8px;
+  background:var(--surface);border:1px solid var(--line);border-radius:13px;color:inherit;
+  font:inherit;text-align:left;cursor:pointer;box-shadow:var(--shadow);min-height:64px}
+.prow .pi{width:38px;height:25px;border-radius:6px;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.16)}
+.prow .pl{flex:1;min-width:0}
+.prow .pl b{display:block;font-size:14.5px;font-weight:650}
+.prow .pl span{display:block;color:var(--muted);font-size:12px;margin-top:2px;line-height:1.35}
+.prow .pa{flex:none;font-size:12.5px;font-weight:700;color:var(--accent)}
+.prow:disabled{opacity:.5;cursor:default}
+.prow:disabled .pa{color:var(--muted)}
+.custom-add{flex:none;margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -338,6 +366,24 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
   </section>
 </main>
 
+<div class="modal" id="picker" hidden>
+  <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <div class="mhead">
+      <b id="picker-title">Add a card</b>
+      <button type="button" class="xbtn" id="pickclose" aria-label="Close card picker">&times;</button>
+    </div>
+    <p class="picker-note">Search the sourced card library. Tap a result and its rewards, fees and benefits will be filled in automatically.</p>
+    <div class="searchbar" style="margin:10px 0">
+      <label class="sr-only" for="pickq">Search card library</label>
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"></circle><line x1="13.5" y1="13.5" x2="18" y2="18"></line></svg>
+      <input type="search" id="pickq" aria-label="Search card library"
+             placeholder="Try Citi Strata Premier..." autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="plist" id="picklist"></div>
+    <button type="button" class="btn quiet custom-add" id="pickcustom">Add a blank custom card</button>
+  </div>
+</div>
+
 <nav aria-label="Main sections">
   <button data-tab="sheet" class="on" aria-current="page"><span class="ic">&#9776;</span>Cheat sheet</button>
   <button data-tab="ask"><span class="ic">&#63;</span>Ask</button>
@@ -346,7 +392,7 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 "use strict";
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.1.0";
 const SCHEMA_VERSION = 2;
 const DATA_VERSION = "2026-08-29";
 const STORE_KEY = "cardpicker.v1";
@@ -378,13 +424,19 @@ const CATS = [
   {id:"flightsBilt", emo:"✈",    label:"Flights — Bilt Travel", askHide:true, short:"Bilt Travel flights", alias:"bilt travel flight", eligibleIds:["bilt"]},
   {id:"hotelsBilt",  emo:"\u{1F3E8}", label:"Hotels — Bilt Travel", askHide:true, short:"Bilt Travel hotels", alias:"bilt travel hotel", eligibleIds:["bilt"]},
   {id:"biltDining",  emo:"\u{1F37D}", label:"Participating Bilt Dining restaurant", askHide:true, short:"Bilt Dining partner", alias:"bilt dining neighborhood dining", eligibleIds:["bilt"]},
+  {id:"hotelsCiti", emo:"\u{1F3E8}", label:"Hotels — Citi Travel", askHide:true, short:"Citi Travel hotels", alias:"citi travel hotel", eligibleIds:["citi-strata-premier"]},
+  {id:"rentalCiti", emo:"\u{1F697}", label:"Rental cars — Citi Travel", askHide:true, short:"Citi Travel rental", alias:"citi travel rental car", eligibleIds:["citi-strata-premier"]},
+  {id:"attractionsCiti", emo:"\u{1F3AD}", label:"Attractions — Citi Travel", askHide:true, short:"Citi Travel attractions", alias:"citi travel attraction tour activity", eligibleIds:["citi-strata-premier"]},
   {id:"unitedFlights",emo:"\u{1F6EB}", label:"United flights", askHide:true, short:"United flights", alias:"united ual mileageplus"},
   {id:"flightsDirect",emo:"✈",    label:"Flights — other airlines, booked direct", askHide:true, short:"Flights (airline)", alias:"delta american southwest jetblue alaska airline flight airfare ticket"},
   {id:"hotelsDirect", emo:"\u{1F3E8}", label:"Hotels — booked direct", askHide:true, short:"Hotels (direct)", alias:"marriott hilton hyatt ihg westin sheraton motel inn hotel"},
   {id:"vacationRental",emo:"\u{1F3D6}", label:"Vacation rentals (Airbnb, Vrbo)", askHide:true, short:"Airbnb / Vrbo", alias:"airbnb vrbo vacation rental homeaway vacasa"},
   {id:"rentalCar",    emo:"\u{1F697}", label:"Rental cars — booked direct",
-   feeNote:"Booked through Capital One Travel a rental car earns 10x instead. Either way the insurance below is usually worth more than the points.", short:"Rental cars", alias:"hertz avis enterprise budget sixt national alamo rental car hire"},
-  {id:"travelOther",  emo:"\u{1F9F3}", label:"Other travel (Expedia, parking, tolls)", short:"Other travel", alias:"expedia booking priceline kayak orbitz costco travel parking garage toll bridge ferry cruise travel agency"},
+   feeNote:"A rental car booked through Capital One Travel or Citi Travel can earn 10x instead. Either way, compare the insurance below before chasing points.", short:"Rental cars", alias:"hertz avis enterprise budget sixt national alamo rental car hire"},
+  {id:"rentalAgency", emo:"\u{1F697}", label:"Rental cars — travel agency (Costco Travel)", askHide:true,
+   perkAs:"rentalCar", feeNote:"This uses the travel-agency reward rate, not an issuer-portal rate. Rental-car protection can still apply when the full eligible booking is paid with the card.", short:"Travel-agency rental", alias:"costco travel rental car travel agency rental"},
+  {id:"travelAgency", emo:"\u{1F9F3}", label:"Travel agencies (Expedia, Costco Travel)", askHide:true, short:"Travel agency", alias:"expedia booking priceline kayak orbitz costco travel travel agency"},
+  {id:"travelOther",  emo:"\u{1F9F3}", label:"Other travel (parking, tolls)", short:"Other travel", alias:"parking garage toll bridge ferry cruise"},
   {id:"streaming",    emo:"\u{1F4FA}", label:"Streaming, internet & phone", short:"Streaming / Phone", alias:"netflix spotify hulu disney max youtube internet phone verizon att t-mobile comcast xfinity cable", hide:true},
   {id:"drugstore",    emo:"\u{1F48A}", label:"Drugstores", short:"Drugstores", alias:"cvs walgreens rite aid pharmacy chemist"},
   {id:"bills",        emo:"\u{1F4C4}", label:"Bills, utilities & insurance", short:"Bills & utilities", alias:"utility electric water gas bill insurance geico progressive statefarm", hide:true},
@@ -400,6 +452,7 @@ const DEFAULT_CPP = {
   capone: {name:"Capital One Miles",      cpp:1.8},
   united: {name:"United MileagePlus",     cpp:1.3},
   amazon: {name:"Amazon points",          cpp:1.0},
+  citi:   {name:"Citi ThankYou Points",   cpp:1.7},
   cash:   {name:"Cash back",              cpp:1.0}
 };
 
@@ -417,8 +470,8 @@ const DEFAULT_CARDS = [
     cur:"chase", af:95, ftf:0, mult:1, base:1,
     earn:{flightsChase:5, hotelsChase:5, rentalChase:5, lyft:5,
           dining:3, gas:3, vacationRental:3, groceriesOnline:3, streaming:3,
-          flightsDirect:2, unitedFlights:2, hotelsDirect:2, travelOther:2,
-          rentalCar:2, transit:2},
+          flightsDirect:2, unitedFlights:2, hotelsDirect:2, travelAgency:2, travelOther:2,
+          rentalCar:2, rentalAgency:2, transit:2},
     notes:["Refreshed in June 2026 — it now earns 3x on gas and EV charging and 3x on vacation rentals, which it did not before."],
     perk:{
       rentalCar:{t:"Primary rental car cover", priority:2, over:true,
@@ -520,6 +573,45 @@ const DEFAULT_CARDS = [
   }
 ];
 
+/* Sourced templates shown by the Add a card picker. Keep this intentionally
+   small: a wrong template is worse than asking the user to fill in a blank. */
+const CARD_CATALOG = [
+  {
+    id:"citi-strata-premier", issuer:"Citi", network:"Mastercard", tint:"#153a70",
+    name:"Citi Strata Premier", nick:"Strata Premier",
+    alias:"citi strata premier primer citi premier thankyou travel",
+    librarySummary:"10x Citi Travel hotels, rentals & attractions · 3x dining, groceries, gas, flights & hotels · 1x else",
+    src:"citi.com Citi Strata Premier terms and benefits — checked 29 Aug 2026",
+    cur:"citi", af:95, ftf:0, mult:1, base:1,
+    earn:{hotelsCiti:10, rentalCiti:10, attractionsCiti:10,
+      flightsDirect:3, unitedFlights:3, hotelsDirect:3, travelAgency:3, rentalAgency:3,
+      dining:3, groceries:3, groceriesOnline:3, gas:3},
+    notes:["The $100 annual hotel benefit applies once per calendar year to one Citi Travel hotel stay of $500 or more before taxes and fees.",
+      "Citi ThankYou Points can transfer to airline and hotel partners. The app starts them at 1.7 cents each; adjust that value in My cards if you redeem differently."],
+    perk:{
+      rentalCar:{t:"MasterRental coverage",
+        b:"Coverage is secondary inside your country of residence and primary outside it. Decline the rental company's collision waiver and pay the full rental with the card; exclusions and limits apply."},
+      rentalCiti:{t:"MasterRental coverage",
+        b:"The same rental protection can apply when booked through Citi Travel: secondary inside your country of residence and primary outside it. Confirm the current benefits guide before booking."},
+      flightsDirect:{t:"Travel protection",
+        b:"Includes trip delay, common-carrier cancellation and interruption, and lost or damaged luggage coverage, subject to the current benefits guide."},
+      unitedFlights:{t:"Travel protection",
+        b:"Includes trip delay, common-carrier cancellation and interruption, and lost or damaged luggage coverage, subject to the current benefits guide."}
+    },
+    caveat:{
+      hotelsCiti:"10x requires a hotel booking through Citi Travel.",
+      rentalCiti:"10x requires a rental-car booking through Citi Travel.",
+      attractionsCiti:"10x requires an attraction booking through Citi Travel.",
+      travelAgency:"Citi's 3x air-travel and other-hotel category includes travel agencies; parking and tolls remain 1x.",
+      rentalAgency:"A Costco Travel rental generally uses Citi's 3x travel-agency rate, not the 10x Citi Travel portal rate.",
+      groceries:"Supermarkets qualify; warehouse clubs and general-merchandise superstores do not."
+    }
+  }
+];
+
+const CARD_LIBRARY = DEFAULT_CARDS.concat(CARD_CATALOG).slice().sort((a,b) =>
+  String(a.issuer || "").localeCompare(String(b.issuer || "")) || a.name.localeCompare(b.name));
+
 /* ============================================================
    MERCHANT SHORTCUTS for the Ask tab
    ============================================================ */
@@ -527,9 +619,9 @@ const MERCHANTS = [
   {n:"Costco",          cat:"groceries", onlineCat:"online", network:"Visa", note:"US Costco warehouses accept Visa credit cards; Costco.com also accepts Mastercard. Warehouse clubs are excluded from Sapphire's online-grocery bonus."},
   {n:"Target",          cat:"retail",    note:"Target codes as a discount store, not a grocery store, so grocery bonuses do not apply."},
   {n:"Instacart",       cat:"groceriesOnline", how:"online", note:"Delivery apps code as online grocery, which is a different bonus from walking into the store."},
-  {n:"Expedia",         cat:"travelOther", how:"online", note:"Booking sites code as general travel, not as a hotel or airline, so hotel and airline bonuses do not apply."},
-  {n:"Booking.com",     cat:"travelOther", how:"online", note:"Same as Expedia — general travel, not a hotel."},
-  {n:"Costco Travel",   cat:"travelOther", how:"online", note:"Costco Travel generally codes as a travel agency, not an issuer card portal. Visa and Mastercard are accepted. For a rental car, search “Costco Travel rental car” so primary rental coverage is included."},
+  {n:"Expedia",         cat:"travelAgency", how:"online", note:"Booking sites generally code as travel agencies, not as a hotel, airline or issuer portal."},
+  {n:"Booking.com",     cat:"travelAgency", how:"online", note:"Booking sites generally code as travel agencies, not as a hotel, airline or issuer portal."},
+  {n:"Costco Travel",   cat:"travelAgency", how:"online", note:"Costco Travel generally codes as a travel agency, not an issuer card portal. Visa and Mastercard are accepted. For a rental car, search “Costco Travel rental car” so primary rental coverage is included."},
   {n:"Parking",         cat:"travelOther", note:"Parking and garages count as travel, which surprises most people."},
   {n:"Tolls",           cat:"travelOther", note:"Toll roads and bridges count as travel too."}
 ];
@@ -539,11 +631,11 @@ const SEARCH_SHORTCUTS = [
   {q:"uber eats", cat:"dining"}, {q:"doordash", cat:"dining"},
   {q:"grubhub", cat:"dining"}, {q:"uber", cat:"transit"},
   {q:"whole foods", cat:"amazon"}, {q:"amazon", cat:"amazon", how:"online"},
-  {q:"costco travel rental car", cat:"rentalCar", merchant:"Costco Travel", how:"online"},
-  {q:"costco travel", cat:"travelOther", merchant:"Costco Travel", how:"online"},
+  {q:"costco travel rental car", cat:"rentalAgency", merchant:"Costco Travel", how:"online"},
+  {q:"costco travel", cat:"travelAgency", merchant:"Costco Travel", how:"online"},
   {q:"costco", cat:"groceries", merchant:"Costco"},
-  {q:"expedia", cat:"travelOther", merchant:"Expedia"},
-  {q:"booking.com", cat:"travelOther", merchant:"Booking.com"},
+  {q:"expedia", cat:"travelAgency", merchant:"Expedia"},
+  {q:"booking.com", cat:"travelAgency", merchant:"Booking.com"},
   {q:"gap", cat:"retail"}, {q:"online", cat:"online", how:"online"},
   {q:"flight", cat:"flightsDirect"}, {q:"hotel", cat:"hotelsDirect"},
   {q:"rental car", cat:"rentalCar"},
@@ -555,7 +647,10 @@ const SEARCH_SHORTCUTS = [
   {q:"capital one travel rental car", cat:"rentalCapone"},
   {q:"bilt travel flight", cat:"flightsBilt"},
   {q:"bilt travel hotel", cat:"hotelsBilt"},
-  {q:"bilt dining", cat:"biltDining"}
+  {q:"bilt dining", cat:"biltDining"},
+  {q:"citi travel hotel", cat:"hotelsCiti"},
+  {q:"citi travel rental car", cat:"rentalCiti"},
+  {q:"citi travel attraction", cat:"attractionsCiti"}
 ];
 
 /* ============================================================
@@ -923,7 +1018,7 @@ function normaliseSearch(value){
 function findSearchHit(value){
   const q = normaliseSearch(value);
   if(!q) return null;
-  if(["chase travel","capital one travel","bilt travel"].includes(q)) return null;
+  if(["chase travel","capital one travel","bilt travel","citi travel"].includes(q)) return null;
   const shortcuts = SEARCH_SHORTCUTS.slice().sort((a,b) => b.q.length - a.q.length);
   const exact = shortcuts.find(x => normaliseSearch(x.q) === q);
   const shortcut = exact || shortcuts.find(x => q.includes(normaliseSearch(x.q)));
@@ -986,7 +1081,7 @@ function renderChips(autoPick){
       const d = document.createElement("div");
       d.className = "nohit";
       const entered = normaliseSearch(document.getElementById("search").value);
-      d.textContent = ["chase travel","capital one travel","bilt travel"].includes(entered)
+      d.textContent = ["chase travel","capital one travel","bilt travel","citi travel"].includes(entered)
         ? "Add what you are booking: flight, hotel or rental car. Portal rates and insurance depend on the subtype."
         : 'Nothing matches "' + document.getElementById("search").value.trim() +
           '". Try a merchant such as Gap or Expedia, or a category such as shopping or groceries.';
@@ -1072,11 +1167,20 @@ function activeNetwork(){
 
 // Benefits attached to a category, and whether one should outrank the points.
 function perksFor(cat){
-  return S.cards.filter(c => c.on && c.perk && c.perk[cat]).map(c => ({ c, p:c.perk[cat] }));
+  const meta = catById(cat);
+  const perkCat = (meta && meta.perkAs) || cat;
+  return S.cards.filter(c => c.on && c.perk && (c.perk[cat] || c.perk[perkCat]))
+    .map(c => ({ c, p:c.perk[cat] || c.perk[perkCat] }));
 }
 function overridingPerk(cat){
   return perksFor(cat).filter(x => x.p.over)
     .sort((a,b) => finiteNumber(b.p.priority, 0) - finiteNumber(a.p.priority, 0))[0] || null;
+}
+function protectionRunner(cat, bestId, list){
+  const protectedCard = perksFor(cat)
+    .filter(x => x.c.id !== bestId)
+    .sort((a,b) => finiteNumber(b.p.priority, 0) - finiteNumber(a.p.priority, 0))[0];
+  return protectedCard ? list.find(r => r.c.id === protectedCard.c.id) || null : null;
 }
 function perkHTML(cat, winnerId, skipWinner){
   let h = "";
@@ -1141,8 +1245,7 @@ function renderAnswer(){
   // If cover is why we picked this card, the sensible fallback also has cover.
   let second = null;
   if(overNote){
-    const withPerk = perksFor(cat).map(x => x.c.id);
-    second = list.find(r => r.c.id !== best.c.id && withPerk.indexOf(r.c.id) >= 0);
+    second = protectionRunner(cat, best.c.id, list);
   }
   if(!second) second = list.find(r => r.c.id !== best.c.id);
 
@@ -1344,7 +1447,8 @@ function fillEditor(box, card){
   const sel = document.createElement("select");
   sel.style.flex = "1";
   sel.setAttribute("aria-label", "Bonus category to add");
-  CATS.filter(c => !(c.id in (card.earn || {}))).forEach(c => {
+  CATS.filter(c => !(c.id in (card.earn || {})) &&
+    (!c.eligibleIds || c.eligibleIds.indexOf(card.id) >= 0)).forEach(c => {
     const o = document.createElement("option");
     o.value = c.id; o.textContent = c.label;
     sel.appendChild(o);
@@ -1365,6 +1469,35 @@ function fillEditor(box, card){
   head2.className = "sec"; head2.style.margin = "18px 0 2px";
   head2.textContent = "The rest of this card";
   box.appendChild(head2);
+
+  const nameRow = document.createElement("label");
+  nameRow.className = "erow";
+  const nameLabel = document.createElement("span"); nameLabel.textContent = "Card name";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text"; nameInput.className = "wide"; nameInput.value = card.name || "";
+  nameInput.setAttribute("aria-label", "Card name");
+  nameInput.onchange = () => {
+    const value = nameInput.value.trim();
+    if(!value){ nameInput.value = card.name || ""; return; }
+    card.name = value; card.nick = value; markOverride(card, "name");
+    save(); renderCards(); renderSheet(); renderAnswer();
+  };
+  nameRow.appendChild(nameLabel); nameRow.appendChild(nameInput); box.appendChild(nameRow);
+
+  const currencyRow = document.createElement("label");
+  currencyRow.className = "erow";
+  const currencyLabel = document.createElement("span"); currencyLabel.textContent = "Rewards currency";
+  const currencySelect = document.createElement("select");
+  currencySelect.setAttribute("aria-label", "Rewards currency");
+  Object.keys(S.cpp).forEach(id => {
+    const o = document.createElement("option"); o.value = id; o.textContent = S.cpp[id].name;
+    o.selected = id === card.cur; currencySelect.appendChild(o);
+  });
+  currencySelect.onchange = () => {
+    card.cur = currencySelect.value; markOverride(card, "cur");
+    save(); renderCards(); renderSheet(); renderAnswer();
+  };
+  currencyRow.appendChild(currencyLabel); currencyRow.appendChild(currencySelect); box.appendChild(currencyRow);
 
   num("Base rate (everything else)", card.base, v => card.base = v, "0.5", "base");
   if(!card.plusRoutes){
@@ -1566,38 +1699,121 @@ function renderCpp(){
 }
 
 /* ---- add a card ---- */
-document.getElementById("addcard").onclick = () => {
-  const name = prompt("Card name (for example: Amex Gold)");
-  if(!name) return;
-  const curKeys = Object.keys(S.cpp);
-  const which = prompt(
-    "What does it earn? Type the number:\n\n" +
-    curKeys.map((k, i) => (i + 1) + ". " + S.cpp[k].name).join("\n") +
-    "\n" + (curKeys.length + 1) + ". Something else (you'll name it)",
-    String(curKeys.length)
-  );
-  let cur;
-  const n = Number(which);
-  if(n >= 1 && n <= curKeys.length){
-    cur = curKeys[n - 1];
-  }else{
-    const cname = prompt("Name that currency (for example: Amex Membership Rewards)");
-    if(!cname) return;
-    cur = "cur" + Date.now();
-    const cpp = Math.max(0.1, finiteNumber(prompt("What's one point worth, in cents? (1 = plain cash back)", "1.8"), 1));
-    S.cpp[cur] = { name: cname, cpp };
-  }
-  const base = Math.max(0, finiteNumber(prompt("Base rate on everything else (1 = 1x or 1%)", "1"), 1));
-  const networkInput = String(prompt("Card network (Visa, Mastercard, American Express or Discover)", "Visa") || "Other").trim();
-  const knownNetwork = ["Visa","Mastercard","American Express","Discover"]
-    .find(x => x.toLowerCase() === networkInput.toLowerCase());
-  S.cards.push({
-    id: "c" + Date.now(), on: true, name, nick: name,
-    cur, network:knownNetwork || "Other", af: 0, ftf: 0, mult: 1, base,
-    earn: {}, notes: [], caveat: {}, userOverrides:{name:true, network:true}
+const picker = document.getElementById("picker");
+const pickq = document.getElementById("pickq");
+const pickcustom = document.getElementById("pickcustom");
+
+function ensureCurrency(id){
+  if(S.cpp[id]) return;
+  const source = DEFAULT_CPP[id];
+  S.cpp[id] = source ? clone(source) : {name:id, cpp:1};
+}
+
+function templateSummary(card){
+  if(card.librarySummary) return card.librarySummary;
+  const unit = value => card.cur === "cash"
+    ? fmt(value * finiteNumber(card.mult, 1)) + "%"
+    : fmt(value) + "x";
+  const bits = Object.entries(card.earn || {})
+    .sort((a,b) => finiteNumber(b[1], 0) - finiteNumber(a[1], 0))
+    .slice(0, 2)
+    .map(([id,value]) => {
+      const category = catById(id);
+      return unit(value) + " " + (category ? (category.short || category.label).toLowerCase() : id);
+    });
+  bits.push(unit(card.base) + " everywhere else");
+  return bits.join(" · ");
+}
+
+function addTemplate(template){
+  if(S.cards.some(card => card.id === template.id)) return;
+  const card = clone(template);
+  card.on = true;
+  ensureCurrency(card.cur);
+  if(card.plus && card.plus.cur) ensureCurrency(card.plus.cur);
+  S.cards.push(card);
+  applyRoute(); save(); closePicker(); renderAll(); openCard(card.id);
+}
+
+function openCard(id){
+  const el = document.querySelector('#cardlist .card[data-id="' + id + '"]');
+  if(!el) return;
+  el.classList.add("open");
+  const button = el.querySelector(".cexpand");
+  if(button) button.setAttribute("aria-expanded", "true");
+  el.scrollIntoView({block:"center", behavior:"smooth"});
+}
+
+function renderPicker(){
+  const query = normaliseSearch(pickq.value);
+  const terms = query.split(" ").filter(Boolean);
+  const host = document.getElementById("picklist");
+  host.innerHTML = "";
+  const owned = new Set(S.cards.map(card => card.id));
+  let shown = 0, issuer = null;
+
+  CARD_LIBRARY.forEach(template => {
+    const haystack = normaliseSearch([template.name, template.nick, template.issuer, template.alias].join(" "));
+    if(terms.length && !terms.every(term => haystack.includes(term))) return;
+    shown++;
+    if(template.issuer !== issuer){
+      issuer = template.issuer;
+      const heading = document.createElement("div");
+      heading.className = "pgroup"; heading.textContent = issuer || "Other";
+      host.appendChild(heading);
+    }
+    const isOwned = owned.has(template.id);
+    const row = document.createElement("button");
+    row.type = "button"; row.className = "prow"; row.disabled = isOwned;
+    row.setAttribute("aria-label", (isOwned ? "Already added: " : "Add ") + template.name);
+    row.innerHTML = '<span class="pi" style="background:linear-gradient(135deg,' +
+      safeColor(template.tint) + ' 0%,' + shade(safeColor(template.tint)) + ' 100%)"></span>' +
+      '<span class="pl"><b>' + esc(template.name) + '</b><span>' +
+      esc(templateSummary(template)) + '</span></span><span class="pa">' +
+      (isOwned ? "Added" : "Add") + '</span>';
+    if(!isOwned) row.onclick = () => addTemplate(template);
+    host.appendChild(row);
   });
-  save(); renderCards(); renderRent(); renderCpp(); renderSheet(); renderAnswer();
-  alert("Added. Tap it in the list to set its bonus categories, annual fee and foreign fee.");
+
+  if(!shown){
+    const empty = document.createElement("div");
+    empty.className = "nohit";
+    empty.textContent = 'No sourced template matches "' + pickq.value.trim() + '" yet.';
+    host.appendChild(empty);
+  }
+  pickcustom.textContent = query
+    ? 'Add "' + pickq.value.trim() + '" as a blank custom card'
+    : "Add a blank custom card";
+}
+
+function openPicker(){
+  pickq.value = ""; renderPicker(); picker.hidden = false;
+  document.body.style.overflow = "hidden";
+  setTimeout(() => pickq.focus(), 0);
+}
+function closePicker(){
+  picker.hidden = true; document.body.style.overflow = "";
+  document.getElementById("addcard").focus();
+}
+
+document.getElementById("addcard").onclick = openPicker;
+document.getElementById("pickclose").onclick = closePicker;
+pickq.oninput = renderPicker;
+picker.onclick = event => { if(event.target === picker) closePicker(); };
+document.addEventListener("keydown", event => {
+  if(event.key === "Escape" && !picker.hidden) closePicker();
+});
+pickcustom.onclick = () => {
+  const name = pickq.value.trim();
+  if(!name){
+    pickq.placeholder = "Type the card name first"; pickq.focus(); return;
+  }
+  const card = {
+    id:"custom-" + Date.now(), on:true, issuer:"Custom", network:"Other", tint:"#3b4656",
+    name, nick:name, cur:"cash", af:0, ftf:0, mult:1, base:1, earn:{}, notes:[], caveat:{},
+    userOverrides:{name:true, network:true, cur:true, base:true}
+  };
+  S.cards.push(card); save(); closePicker(); renderAll(); openCard(card.id);
 };
 
 document.getElementById("reset").onclick = () => {
