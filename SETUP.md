@@ -2,15 +2,17 @@
 
 Tells you which of your credit cards to use for a given purchase.
 One HTML file, no build step, no framework, no CDN, no backend, no accounts.
-Everything is stored in the browser on your own phone.
+Settings are stored locally in the browser. GitHub Pages uses one storage origin
+per username, so other apps under `gargi-pakale.github.io` technically share
+that origin. Never store card numbers, logins or account details here.
 
 | File | Role |
 |---|---|
 | `index.html` | The whole app — markup, styles, logic, card data |
 | `sw.js` | Service worker, offline cache. Bump `CACHE` on every release |
 | `manifest.webmanifest` | Standalone display + icon |
-| `icon-180.png`, `icon-512.png` | Home Screen icon |
-| `artifact.html` | The same app with the page wrapper stripped, for previewing as a Claude Artifact. Not part of the deploy — regenerate it from `index.html` if the app changes |
+| `icon-180.png`, `icon-192.png`, `icon-512.png` | Home Screen and PWA icons |
+| `tests/app.test.mjs` | Reward, search, migration and safety regressions |
 
 Bump `APP_VERSION` in `index.html` and `CACHE` in `sw.js` together, or the phone
 keeps serving the stale cached build. (Same trap as Ted Tracker.)
@@ -39,7 +41,7 @@ a private repo, and GitHub Pages on a private repo needs a paid plan.
 
 1. Create a **public** repo on github.com — suggested name `which-card`.
    See the section above for why public is fine here.
-2. Upload `index.html`, `sw.js`, `manifest.webmanifest` and both `.png` icons
+2. Upload `index.html`, `sw.js`, `manifest.webmanifest` and all three `.png` icons
    to the repo root (drag and drop on github.com works).
 3. Repo **Settings → Pages → Source: Deploy from a branch → main → / (root)**.
 4. Wait about a minute, then open `https://<your-username>.github.io/which-card/`
@@ -62,31 +64,33 @@ Bilt Cash at the same time.
 Some cards carry protections worth far more than any rewards difference, so the
 app shows them as their own panel and marks one "worth more than the points"
 when it should override the winner. Rental cars are the clearest case: both
-Venture X (primary, up to $75,000) and Sapphire Preferred (primary, up to
-$60,000) let you decline the rental counter's own waiver, which runs $15-30 a
-day. No points rate comes close to that. Same logic puts the United Explorer
-ahead on United flights for the free checked bag.
+Venture X (primary, up to $75,000), Sapphire Preferred (primary, up to
+$60,000) and Bilt Blue (primary MasterRental; check the current benefits guide
+for limits) can let you decline the rental counter's collision waiver. The app
+puts Venture X first and Sapphire second for a normal eligible rental. The same
+logic can put United Explorer ahead on United flights when its checked-bag
+benefit applies.
 
 ## Apple Pay vs swiping
 
-No difference. Rewards follow the merchant's category code, which is a property
-of the shop, not of how you paid. The one known oddity is that mobile-wallet
-purchases at some drugstores have been seen coding as general merchandise
-instead of drugstore. The in-person / online toggle in the app is about the
-merchant, not the terminal.
+Normally no difference. Rewards follow the merchant's category code and the
+transaction data supplied by the merchant. The in-person / online toggle is
+about where the transaction occurs, not whether the card is tapped or swiped.
 
 ## How the recommendation is calculated
 
 For each category, every switched-on card is scored as:
 
     base or bonus multiplier  ×  relationship multiplier  ×  cents per point
-                              −  any category processing fee
+                              −  processing and foreign transaction fees
 
 That gives one comparable "percent back" number for every card, so points and
 cash back can be ranked against each other. Ties are broken by the smaller
 annual fee, and flagged in the app as ties rather than hidden.
 
-Everything in that formula is editable in the **My cards** tab.
+Issuer-portal eligibility, card-network acceptance, the BofA quarterly cap and
+travel-protection overrides are applied separately. Personal values and most
+card fields are editable in **My cards**.
 
 ## Decisions already made — don't relitigate without asking
 
@@ -104,53 +108,43 @@ Everything in that formula is editable in the **My cards** tab.
 
 ## Where the rates came from
 
-Every rate was taken from the issuer's own page (or the program terms) on
-**25 August 2026**, and each card shows its source inside **My cards**. Rates
+Every rate was taken from the issuer's own page or program terms and rechecked
+on **29 August 2026**. Each card shows its source inside **My cards**. Rates
 were not written from memory — an earlier version of this app was, and it was
 wrong in several places.
 
-Corrections that research turned up:
+Important distinctions:
 
-- **United Explorer earns 9x on United flights, not 2x**, since April 2026, and
-  the annual fee went from $95 to $150 ($0 the first year). This makes it your
-  best card by far for anything on United.
+- **United Explorer contributes 3x**, not 9x, on eligible United purchases.
+  United's 9x headline includes 6x fare miles earned as a MileagePlus member
+  regardless of which card pays; those 6x cannot influence the card choice.
 - **Sapphire Preferred was refreshed in June 2026** and now earns 3x on gas and
   EV charging and 3x on vacation rentals (Airbnb, Vrbo), neither of which it had
   before. It also earns 5x on Lyft through 30 September 2027.
-- **Bilt Blue earns 1x on everyday spend.** It has no dining or travel bonus.
-  It earns 3x on Lyft, but only if your Lyft account is linked with Bilt set as
-  the active loyalty partner.
+- **Issuer portals are separate categories.** Chase rates apply only through
+  Chase Travel, Capital One rates only through Capital One Travel, and Bilt
+  rates only through Bilt Travel.
+- **Bilt Blue earns 4x at participating Bilt Dining restaurants, 3x on hotels
+  through Bilt Travel, 2x on flights through Bilt Travel and 3x on linked Lyft.**
+- **BofA's 3% choice category and 2% grocery/wholesale category share the first
+  $2,500 of eligible purchases each quarter.** The app has a spend tracker and
+  switches affected categories to the base rate when exhausted.
 
 ## Bilt Cash — what it actually is
 
-Three passes to get this right, so it is worth writing down.
+The card has two mutually exclusive reward options, selected in the Bilt app:
 
-**Bilt Cash is not a statement credit and cannot be cashed out at face value.**
-It is a book of monthly partner credits — GrubHub, Gopuff, Lyft, hotels,
-Priority Pass, parking, Walgreens, SoulCycle and similar — each separately
-capped, none rolling over month to month. Plus a conversion to rent points at
-$30 per 1,000, capped at 1x your rent.
+- **Flexible:** everyday spend earns 1 Bilt Point plus 4% Bilt Cash. Bilt Cash
+  can be manually redeemed at **$3 for 100 housing points**, up to 1 point per
+  $1 of housing paid, or used for available partner redemptions. It never
+  converts automatically.
+- **Housing-only:** everyday spend earns the normal 1x and no 4% Bilt Cash.
+  Housing earns 0.5x at a 25% everyday-spend ratio, 0.75x at 50%, 1x at 75%,
+  and 1.25x at 100%. Below 25%, the account receives a 250-point floor.
 
-So a dollar of Bilt Cash is worth a full dollar only on spending you were going
-to do at one of those partners anyway. The rent conversion is the dependable
-floor at roughly 60 cents on the dollar, so **that is the default**, giving a
-flat 2.33x up to `0.75 x rent` of monthly spending. The toggle in **My cards**
-switches to the optimistic partner-credit view.
-
-**Redeeming is manual either way.** Bilt Cash never converts itself. The whole
-balance expires every 31 December with only $100 rolling over.
-
-**Still unconfirmed:** whether the 4% earn rate is permanent or promotional.
-Bilt's own terms pages are PDFs that neither render nor state it, and no
-secondary source says either way. It would be in the cardholder agreement.
-
-## The old Bilt Cash trap (superseded)
-
-Bilt Cash is not cash back, which is the single most misleading thing about the
-card. Its only use is unlocking points on rent or mortgage, at **$30 of Bilt
-Cash per 1,000 points**. So a dollar of Bilt Cash is worth about 33 Bilt Points
-— roughly 60 cents, not a dollar. That is why the app scores "4% Bilt Cash" as
-about 2.4%, giving Bilt 4.2% on everyday spend rather than 5.8%.
+Under Flexible, converting to housing points makes the marginal everyday-spend
+rate 2.33x until the housing ceiling is full. With no housing amount entered,
+the app correctly counts that conversion as zero and shows Bilt's normal 1x.
 
 It is also capped by your rent, because you can only unlock up to 1x of the
 housing payment. The arithmetic:
@@ -158,11 +152,16 @@ housing payment. The arithmetic:
     Bilt Cash your rent can absorb  =  rent / 33.33
     Spending needed to earn it      =  that / 4%   =  0.75 x rent
 
-So $2,000 of rent absorbs $60 of Bilt Cash, which $1,500 of everyday spending
-earns. **Past $1,500 in a month, Bilt is a plain 1x card and Venture X takes
-over.** Enter your rent in **My cards** and the app works this out for you and
-says the number out loud. There's a switch there for when you've used the
-month's Bilt Cash up.
+So $2,000 of housing absorbs $60 of Bilt Cash, which $1,500 of everyday spending
+earns. Past that point, additional spending earns the normal card rate unless
+you value another available Bilt Cash redemption.
+
+## Verification
+
+Run `npm test` before publishing. The suite covers United, both Bilt options,
+the BofA cap, Costco network acceptance, issuer portals, merchant search,
+foreign fees, migrations, empty-card persistence, rental priorities and HTML
+escaping.
 
 ## Things to check on, with dates
 

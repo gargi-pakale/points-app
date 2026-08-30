@@ -1,12 +1,16 @@
 {
   "name": "Which Card?",
   "short_name": "Which Card",
+  "id": "./index.html",
   "start_url": "./index.html",
+  "scope": "./",
+  "description": "Choose the best card for each purchase using your own reward settings.",
   "display": "standalone",
   "background_color": "#12161c",
   "theme_color": "#12161c",
   "icons": [
     { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
