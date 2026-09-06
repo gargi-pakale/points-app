@@ -498,7 +498,7 @@ const CATS = [
   {id:"hotelsCiti", emo:"\u{1F3E8}", label:"Hotels — Citi Travel", askHide:true, short:"Citi Travel hotels", alias:"citi travel hotel", eligibleIds:["citi-strata-premier"]},
   {id:"rentalCiti", emo:"\u{1F697}", label:"Rental cars — Citi Travel", askHide:true, short:"Citi Travel rental", alias:"citi travel rental car", eligibleIds:["citi-strata-premier"]},
   {id:"attractionsCiti", emo:"\u{1F3AD}", label:"Attractions — Citi Travel", askHide:true, short:"Citi Travel attractions", alias:"citi travel attraction tour activity", eligibleIds:["citi-strata-premier"]},
-  {id:"unitedFlights",emo:"\u{1F6EB}", label:"United flights", askHide:true, short:"United flights", alias:"united ual mileageplus"},
+  {id:"unitedFlights",emo:"\u{1F6EB}", label:"United flights", askHide:true, short:"United flights", alias:"united airlines ual mileageplus"},
   {id:"flightsDirect",emo:"✈",    label:"Flights — other airlines, booked direct", askHide:true, short:"Flights (airline)", alias:"delta american southwest jetblue alaska airline flight airfare ticket"},
   {id:"hotelsDirect", emo:"\u{1F3E8}", label:"Hotels — booked direct", askHide:true, short:"Hotels (direct)", alias:"marriott hilton hyatt ihg westin sheraton motel inn hotel"},
   {id:"vacationRental",emo:"\u{1F3D6}", label:"Vacation rentals (Airbnb, Vrbo)", askHide:true, short:"Airbnb / Vrbo", alias:"airbnb vrbo vacation rental homeaway vacasa"},
@@ -1178,17 +1178,26 @@ function findSearchHit(value){
   };
   const exact = shortcuts.find(x => normaliseSearch(x.q) === q);
   if(exact) return toHit(exact);
-  // A query that names a whole category outranks a shorter, generic shortcut
-  // that merely happens to be a substring of it — "united flights" must not
-  // lose to the plain "flight" shortcut it contains.
-  const catMatch = CATS.find(c => [c.id, c.label, c.short].some(v => normaliseSearch(v) === q)) ||
-    CATS.find(c => (" " + normaliseSearch(c.alias) + " ").includes(" " + q + " "));
-  if(catMatch){
-    const how = Object.values(ONLINE_SWAP).includes(catMatch.id) ? "online" : undefined;
-    return Object.assign({cat:catMatch.id, label:catMatch.short || catMatch.label, mi:null}, how ? {how} : {});
-  }
+  // A query that names a whole category by its own id/label/short outranks a
+  // shorter, generic shortcut that merely happens to be a substring of it —
+  // "united flights" must not lose to the plain "flight" shortcut it
+  // contains. Alias matching stays below the generic shortcuts, because an
+  // alias can itself embed a longer, more specific phrase (e.g. "chase
+  // travel flight"), and a generic query like "travel flight" must not be
+  // promoted into that portal-only category just because it is a substring.
+  const toCatHit = cat => {
+    // A category that is itself the "online" half of an in-person/online pair
+    // (e.g. groceriesOnline) must force the Where toggle, or activeCat() will
+    // swap it right back to the in-person category.
+    const how = Object.values(ONLINE_SWAP).includes(cat.id) ? "online" : undefined;
+    return Object.assign({cat:cat.id, label:cat.short || cat.label, mi:null}, how ? {how} : {});
+  };
+  const exactCat = CATS.find(c => [c.id, c.label, c.short].some(v => normaliseSearch(v) === q));
+  if(exactCat) return toCatHit(exactCat);
   const shortcut = shortcuts.find(x => q.includes(normaliseSearch(x.q)));
-  return shortcut ? toHit(shortcut) : null;
+  if(shortcut) return toHit(shortcut);
+  const aliasCat = CATS.find(c => (" " + normaliseSearch(c.alias) + " ").includes(" " + q + " "));
+  return aliasCat ? toCatHit(aliasCat) : null;
 }
 
 function buildAsk(){

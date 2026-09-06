@@ -147,10 +147,23 @@ test("typed merchant search resolves exact intent instead of first substring", (
 test("a category's own name beats a shorter generic shortcut it happens to contain", () => {
   assert.equal(app.findSearchHit("united flights").cat, "unitedFlights");
   assert.equal(app.findSearchHit("united flight").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("United Airlines").cat, "unitedFlights");
   assert.equal(app.findSearchHit("Online shopping").cat, "online");
   assert.equal(app.findSearchHit("Online shopping").how, "online");
   assert.equal(app.findSearchHit("flight").cat, "flightsDirect");
   assert.equal(app.findSearchHit("southwest flight").cat, "flightsDirect");
+});
+
+test("a generic travel query never gets promoted into an issuer-portal-only category", () => {
+  assert.equal(app.findSearchHit("travel flight").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("travel hotel").cat, "hotelsDirect");
+  assert.equal(app.findSearchHit("travel rental car").cat, "rentalCar");
+});
+
+test("an alias match for the online half of an in-person/online pair still forces the Where toggle", () => {
+  const hit = app.findSearchHit("instacart");
+  assert.equal(hit.cat, "groceriesOnline");
+  assert.equal(hit.how, "online");
 });
 
 test("Citi Strata Premier template is complete and ranks only eligible Citi Travel purchases at 10x", () => {
