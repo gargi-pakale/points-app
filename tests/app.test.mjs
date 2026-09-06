@@ -148,6 +148,9 @@ test("a category's own name beats a shorter generic shortcut it happens to conta
   assert.equal(app.findSearchHit("united flights").cat, "unitedFlights");
   assert.equal(app.findSearchHit("united flight").cat, "unitedFlights");
   assert.equal(app.findSearchHit("United Airlines").cat, "unitedFlights");
+  // A single airline-shaped word must not fall specifically to United —
+  // it has no airline name in it, so it belongs to the generic category.
+  assert.equal(app.findSearchHit("airlines").cat, "flightsDirect");
   assert.equal(app.findSearchHit("Online shopping").cat, "online");
   assert.equal(app.findSearchHit("Online shopping").how, "online");
   assert.equal(app.findSearchHit("flight").cat, "flightsDirect");
