@@ -13,7 +13,7 @@ globalThis.__whichCardTest = {
   APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, CARD_CATALOG, CARD_LIBRARY, MERCHANTS, SEARCH_SHORTCUTS,
   POINT_GROUPS, POINT_PROGRAMS, pointAmount, formatPoints, creditAmount, formatCredit, expiryLabel,
   freshState, load, migrate, applyRoute, rank, headline, baseHeadline,
-  findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, protectionRunner, esc,
+  findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, protectionRunner, perksFor, esc,
   setState(value){ S = value; }, getState(){ return S; }
 };`;
 
@@ -200,6 +200,146 @@ test("Citi Strata Premier template is complete and ranks only eligible Citi Trav
   assert.equal(cardResult("rentalAgency", template.id).mult, 3);
   assert.equal(cardResult("travelOther", template.id).mult, 1);
   assert.deepEqual([...app.rank("hotelsCiti").list.map(x => x.c.id)], [template.id]);
+});
+
+test("Chase Sapphire Reserve template separates Chase Travel from direct bookings", () => {
+  const state = reset();
+  assert.equal(app.DEFAULT_CARDS.some(c => c.id === "csr"), false, "csr ships as a catalog template, not a default card");
+  const template = app.CARD_CATALOG.find(card => card.id === "csr");
+  assert.ok(template);
+  assert.equal(template.cur, "chase");
+  assert.equal(template.network, "Visa");
+  assert.equal(template.af, 795);
+  assert.equal(template.ftf, 0);
+  assert.equal(template.base, 1);
+  assert.equal(template.earn.flightsChase, 8);
+  assert.equal(template.earn.hotelsChase, 8);
+  assert.equal(template.earn.rentalChase, 8);
+  assert.equal(template.earn.flightsDirect, 4);
+  assert.equal(template.earn.unitedFlights, 4);
+  assert.equal(template.earn.hotelsDirect, 4);
+  assert.equal(template.earn.dining, 3);
+  assert.equal(template.earn.lyft, 5);
+  state.cards.push({...JSON.parse(JSON.stringify(template)), on:true});
+  assert.equal(cardResult("flightsChase", "csr").mult, 8);
+  assert.equal(cardResult("hotelsChase", "csr").mult, 8);
+  assert.equal(cardResult("rentalChase", "csr").mult, 8);
+  // Direct bookings must earn the 4x direct rate, never the 8x portal rate.
+  assert.equal(cardResult("flightsDirect", "csr").mult, 4);
+  assert.equal(cardResult("hotelsDirect", "csr").mult, 4);
+  assert.equal(cardResult("unitedFlights", "csr").mult, 4);
+  // A direct-booked rental car has no modeled bonus, so it falls to the 1x base.
+  assert.equal(cardResult("rentalCar", "csr").mult, 1);
+  assert.equal(app.baseHeadline(template, "everything"), "1x");
+  // Rental car cover ties Venture X's $75k rather than displacing an
+  // existing card's recommendation, but wins outright for the Chase-portal
+  // category where Venture X has no competing perk.
+  assert.equal(app.overridingPerk("rentalCar").c.id, "ventx");
+  assert.equal(app.overridingPerk("rentalChase").c.id, "csr");
+  const csrCard = state.cards.find(c => c.id === "csr");
+  const ventxCard = state.cards.find(c => c.id === "ventx");
+  assert.equal(csrCard.perk.rentalCar.priority, ventxCard.perk.rentalCar.priority);
+  // The $300 travel credit applies broadly to travel-coded purchases charged
+  // anywhere, not only bookings made through Chase Travel, and purchases it
+  // covers earn no points — it must not be described as a Chase Travel perk.
+  const creditNote = template.notes.find(n => n.includes("$300"));
+  assert.ok(creditNote);
+  assert.match(creditNote, /no requirement to book through Chase Travel/i);
+  assert.match(creditNote, /do not earn points/i);
+  // Trip delay and cancellation cover also applies to a flight booked
+  // through Chase Travel, not only a direct or United booking.
+  assert.ok(template.perk.flightsChase, "csr needs a flightsChase perk entry");
+  assert.ok(app.perksFor("flightsChase").some(x => x.c.id === "csr"));
+});
+
+test("Chase Freedom Unlimited earns its base rate through `base`, not duplicated per category", () => {
+  const state = reset();
+  assert.equal(app.DEFAULT_CARDS.some(c => c.id === "cfu"), false, "cfu ships as a catalog template, not a default card");
+  const template = app.CARD_CATALOG.find(card => card.id === "cfu");
+  assert.ok(template);
+  assert.equal(template.cur, "chase");
+  assert.equal(template.network, "Visa");
+  assert.equal(template.af, 0);
+  assert.equal(template.ftf, 3);
+  assert.equal(template.base, 1.5);
+  assert.equal(template.earn.flightsChase, 5);
+  assert.equal(template.earn.hotelsChase, 5);
+  assert.equal(template.earn.rentalChase, 5);
+  assert.equal(template.earn.dining, 3);
+  assert.equal(template.earn.drugstore, 3);
+  assert.equal(template.earn.lyft, 2);
+  // Only the bonus categories are listed — every other category must come
+  // from `base` rather than a repeated per-category entry.
+  assert.deepEqual(Object.keys(template.earn).sort(),
+    ["dining", "drugstore", "flightsChase", "hotelsChase", "lyft", "rentalChase"]);
+  state.cards.push({...JSON.parse(JSON.stringify(template)), on:true});
+  assert.equal(cardResult("everything", "cfu").mult, 1.5);
+  assert.equal(cardResult("retail", "cfu").mult, 1.5);
+  assert.equal(cardResult("gas", "cfu").mult, 1.5);
+  assert.equal(app.baseHeadline(template, "everything"), "1.5x");
+  assert.equal(cardResult("dining", "cfu").mult, 3);
+  assert.equal(cardResult("drugstore", "cfu").mult, 3);
+  assert.equal(cardResult("flightsChase", "cfu").mult, 5);
+  // The current 2% total Lyft rate, through 30 September 2027.
+  assert.equal(cardResult("lyft", "cfu").mult, 2);
+  assert.match(template.caveat.lyft, /30 September 2027/);
+  // A direct-booked flight gets no Chase Travel bonus.
+  assert.equal(cardResult("flightsDirect", "cfu").mult, 1.5);
+});
+
+test("the new Chase cards are eligible for Chase Travel without leaking the portal rate to direct bookings", () => {
+  const state = reset();
+  const csr = app.CARD_CATALOG.find(c => c.id === "csr");
+  const cfu = app.CARD_CATALOG.find(c => c.id === "cfu");
+  state.cards.push({...JSON.parse(JSON.stringify(csr)), on:true});
+  state.cards.push({...JSON.parse(JSON.stringify(cfu)), on:true});
+  const portalIds = new Set(app.rank("flightsChase").list.map(x => x.c.id));
+  assert.deepEqual(portalIds, new Set(["csp", "prime", "csr", "cfu"]));
+  assert.equal(app.rank("flightsChase").list[0].c.id, "csr", "8x beats every other Chase Travel rate");
+  assert.notEqual(cardResult("flightsDirect", "csr").mult, cardResult("flightsChase", "csr").mult);
+  assert.notEqual(cardResult("hotelsDirect", "csr").mult, cardResult("hotelsChase", "csr").mult);
+  assert.notEqual(cardResult("flightsDirect", "cfu").mult, cardResult("flightsChase", "cfu").mult);
+});
+
+test("adding a new Chase catalog card twice never creates a duplicate id", () => {
+  const state = reset();
+  const template = app.CARD_CATALOG.find(c => c.id === "csr");
+  const addOnce = () => {
+    if(state.cards.some(card => card.id === template.id)) return;
+    state.cards.push({...JSON.parse(JSON.stringify(template)), on:true});
+  };
+  addOnce(); addOnce(); addOnce();
+  assert.equal(state.cards.filter(c => c.id === "csr").length, 1);
+});
+
+test("an existing saved profile keeps its own cards, overrides and removed defaults once new catalog cards ship", () => {
+  const state = reset();
+  // Simulate a real user's history: a disabled default card, a personally
+  // edited rate, a default card the user removed outright, and a
+  // previously-added catalog template.
+  state.cards.find(c => c.id === "bofa").on = false;
+  const csp = state.cards.find(c => c.id === "csp");
+  csp.earn.dining = 4;
+  csp.userOverrides = {earn:true};
+  state.cards = state.cards.filter(c => c.id !== "united");
+  const citi = app.CARD_CATALOG.find(c => c.id === "citi-strata-premier");
+  state.cards.push({...JSON.parse(JSON.stringify(citi)), on:true});
+  state.schema = 1;
+  stored = JSON.stringify(state);
+  app.load();
+  const loaded = app.getState();
+  assert.equal(loaded.cards.find(c => c.id === "bofa").on, false);
+  assert.equal(loaded.cards.find(c => c.id === "csp").earn.dining, 4);
+  assert.equal(loaded.cards.some(c => c.id === "united"), false);
+  assert.ok(loaded.cards.find(c => c.id === "citi-strata-premier"));
+  // The new csr/cfu catalog cards are never auto-added to an existing
+  // profile — adding them is the user's choice through the Add Card picker,
+  // same as any other sourced template.
+  assert.equal(loaded.cards.some(c => c.id === "csr"), false);
+  assert.equal(loaded.cards.some(c => c.id === "cfu"), false);
+  assert.equal(loaded.schema, 3);
+  assert.ok(app.CARD_LIBRARY.some(c => c.id === "csr"));
+  assert.ok(app.CARD_LIBRARY.some(c => c.id === "cfu"));
 });
 
 test("schema migration refreshes shipped rates but preserves personal multiplier", () => {
