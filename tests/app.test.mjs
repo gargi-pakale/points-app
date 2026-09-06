@@ -163,6 +163,17 @@ test("a generic travel query never gets promoted into an issuer-portal-only cate
   assert.equal(app.findSearchHit("travel rental car").cat, "rentalCar");
 });
 
+test("shortcut matching requires a word boundary, not a raw substring", () => {
+  // "gap" must not match inside an unrelated word like "Singapore".
+  assert.equal(app.findSearchHit("Singapore Airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("American Airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("Southwest Airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("airline").cat, "flightsDirect");
+  // The longer, more specific United shortcut still wins over the generic one.
+  assert.equal(app.findSearchHit("United Airlines").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("gap").cat, "retail");
+});
+
 test("an alias match for the online half of an in-person/online pair still forces the Where toggle", () => {
   const hit = app.findSearchHit("instacart");
   assert.equal(hit.cat, "groceriesOnline");

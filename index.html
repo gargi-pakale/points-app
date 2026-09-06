@@ -499,7 +499,7 @@ const CATS = [
   {id:"rentalCiti", emo:"\u{1F697}", label:"Rental cars — Citi Travel", askHide:true, short:"Citi Travel rental", alias:"citi travel rental car", eligibleIds:["citi-strata-premier"]},
   {id:"attractionsCiti", emo:"\u{1F3AD}", label:"Attractions — Citi Travel", askHide:true, short:"Citi Travel attractions", alias:"citi travel attraction tour activity", eligibleIds:["citi-strata-premier"]},
   {id:"unitedFlights",emo:"\u{1F6EB}", label:"United flights", askHide:true, short:"United flights", alias:"united ual mileageplus"},
-  {id:"flightsDirect",emo:"✈",    label:"Flights — other airlines, booked direct", askHide:true, short:"Flights (airline)", alias:"delta american southwest jetblue alaska airline airlines flight airfare ticket"},
+  {id:"flightsDirect",emo:"✈",    label:"Flights — other airlines, booked direct", askHide:true, short:"Flights (airline)", alias:"delta american southwest jetblue alaska airline flight airfare ticket"},
   {id:"hotelsDirect", emo:"\u{1F3E8}", label:"Hotels — booked direct", askHide:true, short:"Hotels (direct)", alias:"marriott hilton hyatt ihg westin sheraton motel inn hotel"},
   {id:"vacationRental",emo:"\u{1F3D6}", label:"Vacation rentals (Airbnb, Vrbo)", askHide:true, short:"Airbnb / Vrbo", alias:"airbnb vrbo vacation rental homeaway vacasa"},
   {id:"rentalCar",    emo:"\u{1F697}", label:"Rental cars — booked direct",
@@ -709,7 +709,7 @@ const SEARCH_SHORTCUTS = [
   {q:"booking.com", cat:"travelAgency", merchant:"Booking.com"},
   {q:"gap", cat:"retail"}, {q:"online", cat:"online", how:"online"},
   {q:"united flight", cat:"unitedFlights"}, {q:"united airlines", cat:"unitedFlights"},
-  {q:"flight", cat:"flightsDirect"}, {q:"hotel", cat:"hotelsDirect"},
+  {q:"flight", cat:"flightsDirect"}, {q:"airline", cat:"flightsDirect"}, {q:"hotel", cat:"hotelsDirect"},
   {q:"rental car", cat:"rentalCar"},
   {q:"chase travel flight", cat:"flightsChase"},
   {q:"chase travel hotel", cat:"hotelsChase"},
@@ -1194,7 +1194,11 @@ function findSearchHit(value){
   };
   const exactCat = CATS.find(c => [c.id, c.label, c.short].some(v => normaliseSearch(v) === q));
   if(exactCat) return toCatHit(exactCat);
-  const shortcut = shortcuts.find(x => q.includes(normaliseSearch(x.q)));
+  // Word-bounded, not a raw substring test — otherwise a short shortcut like
+  // "gap" would match inside an unrelated word such as "Singapore" (Airlines).
+  // A trailing "s?" still lets a bare plural ("flights", "hotels") match its
+  // singular shortcut.
+  const shortcut = shortcuts.find(x => new RegExp("\\b" + normaliseSearch(x.q) + "s?\\b").test(q));
   if(shortcut) return toHit(shortcut);
   const aliasCat = CATS.find(c => (" " + normaliseSearch(c.alias) + " ").includes(" " + q + " "));
   return aliasCat ? toCatHit(aliasCat) : null;
