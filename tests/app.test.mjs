@@ -144,6 +144,42 @@ test("typed merchant search resolves exact intent instead of first substring", (
   assert.equal(app.findSearchHit("zzzz-not-a-merchant"), null);
 });
 
+test("a category's own name beats a shorter generic shortcut it happens to contain", () => {
+  assert.equal(app.findSearchHit("united flights").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("united flight").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("United Airlines").cat, "unitedFlights");
+  // A single airline-shaped word must not fall specifically to United —
+  // it has no airline name in it, so it belongs to the generic category.
+  assert.equal(app.findSearchHit("airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("Online shopping").cat, "online");
+  assert.equal(app.findSearchHit("Online shopping").how, "online");
+  assert.equal(app.findSearchHit("flight").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("southwest flight").cat, "flightsDirect");
+});
+
+test("a generic travel query never gets promoted into an issuer-portal-only category", () => {
+  assert.equal(app.findSearchHit("travel flight").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("travel hotel").cat, "hotelsDirect");
+  assert.equal(app.findSearchHit("travel rental car").cat, "rentalCar");
+});
+
+test("shortcut matching requires a word boundary, not a raw substring", () => {
+  // "gap" must not match inside an unrelated word like "Singapore".
+  assert.equal(app.findSearchHit("Singapore Airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("American Airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("Southwest Airlines").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("airline").cat, "flightsDirect");
+  // The longer, more specific United shortcut still wins over the generic one.
+  assert.equal(app.findSearchHit("United Airlines").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("gap").cat, "retail");
+});
+
+test("an alias match for the online half of an in-person/online pair still forces the Where toggle", () => {
+  const hit = app.findSearchHit("instacart");
+  assert.equal(hit.cat, "groceriesOnline");
+  assert.equal(hit.how, "online");
+});
+
 test("Citi Strata Premier template is complete and ranks only eligible Citi Travel purchases at 10x", () => {
   const state = reset();
   const template = app.CARD_CATALOG.find(card => card.id === "citi-strata-premier");
@@ -210,6 +246,8 @@ test("manual point balances and airline credits migrate safely without account d
 test("manual balance formatting and expiration labels are deterministic", () => {
   assert.equal(app.formatPoints(125689.4), "125,689");
   assert.equal(app.formatCredit(246.789), "$246.79");
+  assert.equal(app.formatCredit(200.5), "$200.50");
+  assert.equal(app.formatCredit(200), "$200");
   const now = new Date(2026, 0, 1);
   assert.equal(app.expiryLabel({expiryType:"never"}, now), "does not expire");
   assert.equal(app.expiryLabel({expiryType:"unknown"}, now), "expiration unknown");

@@ -708,7 +708,8 @@ const SEARCH_SHORTCUTS = [
   {q:"expedia", cat:"travelAgency", merchant:"Expedia"},
   {q:"booking.com", cat:"travelAgency", merchant:"Booking.com"},
   {q:"gap", cat:"retail"}, {q:"online", cat:"online", how:"online"},
-  {q:"flight", cat:"flightsDirect"}, {q:"hotel", cat:"hotelsDirect"},
+  {q:"united flight", cat:"unitedFlights"}, {q:"united airlines", cat:"unitedFlights"},
+  {q:"flight", cat:"flightsDirect"}, {q:"airline", cat:"flightsDirect"}, {q:"hotel", cat:"hotelsDirect"},
   {q:"rental car", cat:"rentalCar"},
   {q:"chase travel flight", cat:"flightsChase"},
   {q:"chase travel hotel", cat:"hotelsChase"},
@@ -763,7 +764,9 @@ function pointAmount(value){ return Math.max(0, Math.round(finiteNumber(value, 0
 function formatPoints(value){ return pointAmount(value).toLocaleString("en-US"); }
 function creditAmount(value){ return Math.max(0, Math.round(finiteNumber(value, 0) * 100) / 100); }
 function formatCredit(value){
-  return creditAmount(value).toLocaleString("en-US", {style:"currency", currency:"USD", minimumFractionDigits:0, maximumFractionDigits:2});
+  const amount = creditAmount(value);
+  const decimals = Number.isInteger(amount) ? 0 : 2;
+  return amount.toLocaleString("en-US", {style:"currency", currency:"USD", minimumFractionDigits:decimals, maximumFractionDigits:decimals});
 }
 function expiryLabel(item, now){
   if(item.expiryType === "never") return "does not expire";
@@ -1167,18 +1170,38 @@ function findSearchHit(value){
   if(!q) return null;
   if(["chase travel","capital one travel","bilt travel","citi travel"].includes(q)) return null;
   const shortcuts = SEARCH_SHORTCUTS.slice().sort((a,b) => b.q.length - a.q.length);
-  const exact = shortcuts.find(x => normaliseSearch(x.q) === q);
-  const shortcut = exact || shortcuts.find(x => q.includes(normaliseSearch(x.q)));
-  if(shortcut){
+  const toHit = shortcut => {
     const merchant = shortcut.merchant && MERCHANTS.find(m => m.n === shortcut.merchant);
     return Object.assign({cat:shortcut.cat, label:shortcut.q, how:shortcut.how || (merchant && merchant.how),
       mi:merchant ? MERCHANTS.indexOf(merchant) : null},
       merchant ? {onlineCat:merchant.onlineCat, network:merchant.network} : {});
-  }
+  };
+  const exact = shortcuts.find(x => normaliseSearch(x.q) === q);
+  if(exact) return toHit(exact);
+  // A query that names a whole category by its own id/label/short outranks a
+  // shorter, generic shortcut that merely happens to be a substring of it —
+  // "united flights" must not lose to the plain "flight" shortcut it
+  // contains. Alias matching stays below the generic shortcuts, because an
+  // alias can itself embed a longer, more specific phrase (e.g. "chase
+  // travel flight"), and a generic query like "travel flight" must not be
+  // promoted into that portal-only category just because it is a substring.
+  const toCatHit = cat => {
+    // A category that is itself the "online" half of an in-person/online pair
+    // (e.g. groceriesOnline) must force the Where toggle, or activeCat() will
+    // swap it right back to the in-person category.
+    const how = Object.values(ONLINE_SWAP).includes(cat.id) ? "online" : undefined;
+    return Object.assign({cat:cat.id, label:cat.short || cat.label, mi:null}, how ? {how} : {});
+  };
   const exactCat = CATS.find(c => [c.id, c.label, c.short].some(v => normaliseSearch(v) === q));
-  if(exactCat) return {cat:exactCat.id, label:exactCat.short || exactCat.label, mi:null};
+  if(exactCat) return toCatHit(exactCat);
+  // Word-bounded, not a raw substring test — otherwise a short shortcut like
+  // "gap" would match inside an unrelated word such as "Singapore" (Airlines).
+  // A trailing "s?" still lets a bare plural ("flights", "hotels") match its
+  // singular shortcut.
+  const shortcut = shortcuts.find(x => new RegExp("\\b" + normaliseSearch(x.q) + "s?\\b").test(q));
+  if(shortcut) return toHit(shortcut);
   const aliasCat = CATS.find(c => (" " + normaliseSearch(c.alias) + " ").includes(" " + q + " "));
-  return aliasCat ? {cat:aliasCat.id, label:aliasCat.short || aliasCat.label, mi:null} : null;
+  return aliasCat ? toCatHit(aliasCat) : null;
 }
 
 function buildAsk(){
