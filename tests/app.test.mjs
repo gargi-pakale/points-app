@@ -144,6 +144,15 @@ test("typed merchant search resolves exact intent instead of first substring", (
   assert.equal(app.findSearchHit("zzzz-not-a-merchant"), null);
 });
 
+test("a category's own name beats a shorter generic shortcut it happens to contain", () => {
+  assert.equal(app.findSearchHit("united flights").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("united flight").cat, "unitedFlights");
+  assert.equal(app.findSearchHit("Online shopping").cat, "online");
+  assert.equal(app.findSearchHit("Online shopping").how, "online");
+  assert.equal(app.findSearchHit("flight").cat, "flightsDirect");
+  assert.equal(app.findSearchHit("southwest flight").cat, "flightsDirect");
+});
+
 test("Citi Strata Premier template is complete and ranks only eligible Citi Travel purchases at 10x", () => {
   const state = reset();
   const template = app.CARD_CATALOG.find(card => card.id === "citi-strata-premier");
@@ -210,6 +219,8 @@ test("manual point balances and airline credits migrate safely without account d
 test("manual balance formatting and expiration labels are deterministic", () => {
   assert.equal(app.formatPoints(125689.4), "125,689");
   assert.equal(app.formatCredit(246.789), "$246.79");
+  assert.equal(app.formatCredit(200.5), "$200.50");
+  assert.equal(app.formatCredit(200), "$200");
   const now = new Date(2026, 0, 1);
   assert.equal(app.expiryLabel({expiryType:"never"}, now), "does not expire");
   assert.equal(app.expiryLabel({expiryType:"unknown"}, now), "expiration unknown");
