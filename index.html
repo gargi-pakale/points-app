@@ -463,7 +463,7 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 "use strict";
-const APP_VERSION = "2.2.0";
+const APP_VERSION = "2.3.0";
 const SCHEMA_VERSION = 3;
 const DATA_VERSION = "2026-08-29";
 const STORE_KEY = "cardpicker.v1";
@@ -486,9 +486,9 @@ const CATS = [
   {id:"gas",          emo:"⛽",    label:"Gas", short:"Gas", alias:"gas petrol fuel shell chevron exxon bp arco ev charging"},
   {id:"lyft",         emo:"\u{1F695}", label:"Lyft rides", short:"Lyft", alias:"lyft", hide:true},
   {id:"transit",      emo:"\u{1F687}", label:"Uber, transit & tolls", short:"Uber / Transit", alias:"uber taxi cab subway metro bus train bart caltrain muni commute"},
-  {id:"flightsChase",emo:"✈",    label:"Flights — Chase Travel", askHide:true, short:"Chase Travel flights", alias:"chase travel flight", eligibleIds:["csp","prime"]},
-  {id:"hotelsChase", emo:"\u{1F3E8}", label:"Hotels — Chase Travel", askHide:true, short:"Chase Travel hotels", alias:"chase travel hotel", eligibleIds:["csp","prime"]},
-  {id:"rentalChase", emo:"\u{1F697}", label:"Rental cars — Chase Travel", askHide:true, short:"Chase Travel rental", alias:"chase travel rental car", eligibleIds:["csp","prime"]},
+  {id:"flightsChase",emo:"✈",    label:"Flights — Chase Travel", askHide:true, short:"Chase Travel flights", alias:"chase travel flight", eligibleIds:["csp","prime","csr","cfu"]},
+  {id:"hotelsChase", emo:"\u{1F3E8}", label:"Hotels — Chase Travel", askHide:true, short:"Chase Travel hotels", alias:"chase travel hotel", eligibleIds:["csp","prime","csr","cfu"]},
+  {id:"rentalChase", emo:"\u{1F697}", label:"Rental cars — Chase Travel", askHide:true, short:"Chase Travel rental", alias:"chase travel rental car", eligibleIds:["csp","prime","csr","cfu"]},
   {id:"flightsCapone",emo:"✈",   label:"Flights — Capital One Travel", askHide:true, short:"Capital One flights", alias:"capital one travel flight", eligibleIds:["ventx"]},
   {id:"hotelsCapone",emo:"\u{1F3E8}", label:"Hotels — Capital One Travel", askHide:true, short:"Capital One hotels", alias:"capital one travel hotel", eligibleIds:["ventx"]},
   {id:"rentalCapone",emo:"\u{1F697}", label:"Rental cars — Capital One Travel", askHide:true, short:"Capital One rental", alias:"capital one travel rental car", eligibleIds:["ventx"]},
@@ -610,8 +610,8 @@ const DEFAULT_CARDS = [
            "$300 annual travel credit and 10,000 anniversary miles offset the $395 fee.",
            "Flights and vacation rentals booked through Capital One Travel earn 5x."],
     perk:{
-      rentalCar:{t:"The best rental car cover you own", over:true, priority:3,
-        b:"Primary collision and theft cover up to $75,000, in the US and abroad — more than the Sapphire's $60,000. Decline the rental counter's waiver, which typically runs $15 to $30 a day, and pay the whole rental on this card. That saving dwarfs the difference in points."},
+      rentalCar:{t:"Primary rental car cover", over:true, priority:3,
+        b:"Primary collision and theft cover up to $75,000, in the US and abroad — more than Sapphire Preferred's $60,000, and matched by Sapphire Reserve. Decline the rental counter's waiver, which typically runs $15 to $30 a day, and pay the whole rental on this card. That saving dwarfs the difference in points."},
       rentalCapone:{t:"Primary rental car cover", over:true, priority:3,
         b:"Primary collision and theft cover up to $75,000. Decline the rental company's waiver and pay the entire rental with Venture X."}
     }
@@ -676,6 +676,51 @@ const CARD_CATALOG = [
       travelAgency:"Citi's 3x air-travel and other-hotel category includes travel agencies; parking and tolls remain 1x.",
       rentalAgency:"A Costco Travel rental generally uses Citi's 3x travel-agency rate, not the 10x Citi Travel portal rate.",
       groceries:"Supermarkets qualify; warehouse clubs and general-merchandise superstores do not."
+    }
+  },
+  {
+    id:"csr", issuer:"Chase", network:"Visa", tint:"#20242b",
+    name:"Chase Sapphire Reserve", nick:"Sapphire Reserve",
+    alias:"chase sapphire reserve csr",
+    librarySummary:"8x Chase Travel · 4x flights & hotels booked direct · 3x dining · 1x else",
+    src:"chase.com/sapphire-cards/personal/reserve + creditcards.chase.com/rewards-credit-cards/sapphire/reserve — checked 6 Sep 2026",
+    cur:"chase", af:795, ftf:0, mult:1, base:1,
+    earn:{flightsChase:8, hotelsChase:8, rentalChase:8,
+      flightsDirect:4, unitedFlights:4, hotelsDirect:4,
+      dining:3, lyft:5},
+    notes:["Relaunched card as of the 2025 refresh: $795 annual fee, 8x on all Chase Travel purchases (including The Edit), 4x on flights and hotels booked directly with the airline or hotel, and 3x on dining worldwide including takeout and eligible delivery. Rental cars, vacation rentals, transit, parking and everything else booked outside Chase Travel earn the 1x base rate.",
+      "A $300 Chase Travel credit each cardmember year offsets part of the annual fee when you book through Chase Travel. The app does not fold a statement credit into the ongoing reward rate above.",
+      "Also includes complimentary Priority Pass Select and Chase Sapphire Lounge access, a DoorDash DashPass membership plus monthly DoorDash credits, Lyft ride credits and a Lyft earning bonus through 30 September 2027, and StubHub/viagogo and Peloton statement credits — see Chase's benefits guide for exact terms, caps and enrollment deadlines."],
+    perk:{
+      rentalCar:{t:"Primary rental car cover", priority:3, over:true,
+        b:"Up to $75,000 for collision or theft, worldwide, for up to 31 days. Primary means you claim through Chase and never involve your own car insurer. Decline the rental counter's own waiver and pay the whole rental on this card."},
+      rentalChase:{t:"Primary rental car cover", priority:3, over:true,
+        b:"Up to $75,000 for collision or theft. Decline the rental company's collision waiver and pay the entire rental with Sapphire Reserve."},
+      flightsDirect:{t:"Trip delay and cancellation cover",
+        b:"Delays over 6 hours reimburse up to $500 a traveler for reasonable expenses, and trip cancellation or interruption is covered up to $10,000 per traveler ($20,000 per trip), as long as you charge the fare to this card."},
+      unitedFlights:{t:"Trip delay and cancellation cover",
+        b:"Delays over 6 hours reimburse up to $500 a traveler, and trip cancellation or interruption is covered up to $10,000 per traveler ($20,000 per trip)."}
+    },
+    caveat:{
+      lyft:"5x on Lyft runs through 30 September 2027, and only for rides booked in the Lyft app.",
+      dining:"Includes takeout and eligible delivery orders, not just sit-down dining.",
+      flightsDirect:"4x requires booking directly with the airline, not through an online travel agency.",
+      hotelsDirect:"4x requires booking directly with the hotel, not through an online travel agency.",
+      unitedFlights:"4x requires booking directly with United, not through a travel agency."
+    }
+  },
+  {
+    id:"cfu", issuer:"Chase", network:"Visa", tint:"#0f4c81",
+    name:"Chase Freedom Unlimited", nick:"Freedom Unlimited",
+    alias:"chase freedom unlimited cfu",
+    librarySummary:"5x Chase Travel · 3x dining & drugstores · 1.5x everywhere else",
+    src:"chase.com/personal/credit-cards/freedom/unlimited + creditcards.chase.com/cash-back-credit-cards/freedom/unlimited — checked 6 Sep 2026",
+    cur:"chase", af:0, ftf:3, mult:1, base:1.5,
+    earn:{flightsChase:5, hotelsChase:5, rentalChase:5, dining:3, drugstore:3},
+    notes:["No annual fee. Earns 1.5x on everything that isn't a bonus category, uncapped, plus 3x on dining (including takeout and eligible delivery) and drugstores, and 5x on travel booked through Chase Travel — all permanent, unlimited rates with no rotating categories or quarterly caps.",
+      "The app values this card's points at the shared Chase Ultimate Rewards rate set in My cards. On their own, Freedom Unlimited points are worth a flat 1 cent each toward cash back or a statement credit; they are only worth more if transferred into an account anchored by an eligible premium Chase card such as Sapphire Preferred, Sapphire Reserve or an Ink Business Preferred card."],
+    caveat:{
+      dining:"Includes takeout and eligible delivery orders billed under a restaurant merchant code, not bakeries, caterers or meal-kit deliveries."
     }
   }
 ];

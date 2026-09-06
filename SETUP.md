@@ -66,6 +66,15 @@ one-tap template. Adding it fills Citi ThankYou Points, $95 annual fee, no
 foreign transaction fee, Mastercard network, 10x Citi Travel categories, 3x
 everyday/travel categories, 1x base earnings and relevant travel protections.
 
+`Chase Sapphire Reserve` and `Chase Freedom Unlimited` are sourced templates
+too, both valued at the shared Chase Ultimate Rewards rate. Sapphire Reserve
+fills $795 annual fee, no foreign transaction fee, Visa network, 8x on all
+Chase Travel purchases, 4x on flights and hotels booked directly with the
+airline or hotel, 3x dining, 1x base and its rental-car and trip protections.
+Freedom Unlimited fills no annual fee, 3% foreign transaction fee, Visa
+network, 5x Chase Travel, 3x dining and drugstores, and a 1.5x base rate with
+no other categories — everything outside those bonuses runs through `base`.
+
 The library stays deliberately curated: an unknown card can be added blank and
 edited in the same card editor, but the app does not pretend an unsourced rate
 is trustworthy.
@@ -133,10 +142,12 @@ card fields are editable in **My cards**.
 
 ## Where the rates came from
 
-Every rate was taken from the issuer's own page or program terms and rechecked
-on **29 August 2026**. Each card shows its source inside **My cards**. Rates
-were not written from memory — an earlier version of this app was, and it was
-wrong in several places.
+Every rate was taken from the issuer's own page or program terms, most
+recently rechecked on **29 August 2026** (**6 September 2026** for Chase
+Sapphire Reserve and Chase Freedom Unlimited). Each card shows its own
+checked date and source inside **My cards**. Rates were not written from
+memory — an earlier version of this app was, and it was wrong in several
+places.
 
 Important distinctions:
 
@@ -155,6 +166,16 @@ Important distinctions:
   gas/EV charging and qualifying travel agencies; and 1x otherwise.** Its
   MasterRental coverage is secondary within the renter's country of residence
   and primary outside it.
+- **Chase Sapphire Reserve's 8x is Chase Travel only.** Flights and hotels
+  booked directly with the airline or hotel earn 4x, not 8x; a rental car
+  booked directly earns the 1x base. It also earns 3x dining and 5x on Lyft
+  through 30 September 2027 (the same Lyft promo Sapphire Preferred has). Its
+  primary rental-car cover is $75,000, matching Venture X's, so the two tie in
+  priority and the app keeps recommending whichever you already had first
+  rather than picking one arbitrarily.
+- **Chase Freedom Unlimited earns 5x only through Chase Travel, plus 3x
+  dining and drugstores; everything else runs through the 1.5x `base` rate,
+  uncapped.** It has no rotating categories, unlike Freedom Flex.
 - **Bilt Blue earns 4x at participating Bilt Dining restaurants, 3x on hotels
   through Bilt Travel, 2x on flights through Bilt Travel and 3x on linked Lyft.**
 - **BofA's 3% choice category and 2% grocery/wholesale category share the first
@@ -190,9 +211,9 @@ you value another available Bilt Cash redemption.
 ## Verification
 
 Run `npm test` before publishing. The suite covers United, both Bilt options,
-the BofA cap, Costco network acceptance, issuer portals, merchant search,
-the Citi Strata Premier template, foreign fees, migrations, empty-card
-persistence, rental priorities and HTML escaping.
+the BofA cap, Costco network acceptance, issuer portals, merchant search, the
+Citi Strata Premier, Sapphire Reserve and Freedom Unlimited templates, foreign
+fees, migrations, empty-card persistence, rental priorities and HTML escaping.
 
 ## Things to check on, with dates
 
@@ -204,5 +225,9 @@ persistence, rental priorities and HTML escaping.
 - **BofA relationship multiplier is 1.5, and is temporary.** Expected to drop to
   1.25 around **November 2026**. Change the one field and everything recalculates.
   Online shopping goes 4.5% -> 3.75%.
-- **Sapphire Preferred's 5x on Lyft ends 30 September 2027.**
+- **Sapphire Preferred's and Sapphire Reserve's 5x on Lyft both end 30 September 2027.**
+- **Sapphire Reserve's $300 Chase Travel credit and other statement credits
+  (DoorDash, Lyft, StubHub/viagogo, Peloton) are not modeled as reward rates.**
+  Check Chase's current benefits guide for their exact terms and deadlines
+  before relying on them.
 - **Rates go stale.** Nothing here phones home. Worth a look once or twice a year.

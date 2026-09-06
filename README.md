@@ -23,10 +23,11 @@ Add to Home Screen to use it like an app.
 Reward rates were taken from each issuer's own page and are dated in
 `SETUP.md`. They go stale — every rate is editable inside the app.
 
-**Add a card** opens a searchable, phone-friendly library. Citi Strata Premier
-is included as a sourced template; typing its name (or “Citi Strata Primer”)
-filters to it and one tap fills its rewards, fee, network and benefits. Cards
-without a sourced template can still be added blank and edited in place.
+**Add a card** opens a searchable, phone-friendly library. Citi Strata Premier,
+Chase Sapphire Reserve and Chase Freedom Unlimited are included as sourced
+templates; typing a card's name (or “Citi Strata Primer”) filters to it and
+one tap fills its rewards, fee, network and benefits. Cards without a sourced
+template can still be added blank and edited in place.
 
 The **Points** tab is a manual loyalty-wallet tracker inspired by dedicated
 points apps, without connecting any accounts. Add a popular card, airline or

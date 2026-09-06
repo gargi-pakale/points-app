@@ -1,6 +1,6 @@
 // Cache names are origin-wide on GitHub Pages. Only delete this app's prefix.
 const CACHE_PREFIX = "whichcard-points-app-";
-const CACHE = CACHE_PREFIX + "v2.2.0";
+const CACHE = CACHE_PREFIX + "v2.3.0";
 const LEGACY_CACHES = ["whichcard-v1.8.1"];
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
