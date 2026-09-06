@@ -13,7 +13,7 @@ globalThis.__whichCardTest = {
   APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, CARD_CATALOG, CARD_LIBRARY, MERCHANTS, SEARCH_SHORTCUTS,
   POINT_GROUPS, POINT_PROGRAMS, pointAmount, formatPoints, creditAmount, formatCredit, expiryLabel,
   freshState, load, migrate, applyRoute, rank, headline, baseHeadline,
-  findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, protectionRunner, esc,
+  findSearchHit, categoryMultiplier, biltHousingRate, capInfo, overridingPerk, protectionRunner, perksFor, esc,
   setState(value){ S = value; }, getState(){ return S; }
 };`;
 
@@ -239,6 +239,17 @@ test("Chase Sapphire Reserve template separates Chase Travel from direct booking
   const csrCard = state.cards.find(c => c.id === "csr");
   const ventxCard = state.cards.find(c => c.id === "ventx");
   assert.equal(csrCard.perk.rentalCar.priority, ventxCard.perk.rentalCar.priority);
+  // The $300 travel credit applies broadly to travel-coded purchases charged
+  // anywhere, not only bookings made through Chase Travel, and purchases it
+  // covers earn no points — it must not be described as a Chase Travel perk.
+  const creditNote = template.notes.find(n => n.includes("$300"));
+  assert.ok(creditNote);
+  assert.match(creditNote, /no requirement to book through Chase Travel/i);
+  assert.match(creditNote, /do not earn points/i);
+  // Trip delay and cancellation cover also applies to a flight booked
+  // through Chase Travel, not only a direct or United booking.
+  assert.ok(template.perk.flightsChase, "csr needs a flightsChase perk entry");
+  assert.ok(app.perksFor("flightsChase").some(x => x.c.id === "csr"));
 });
 
 test("Chase Freedom Unlimited earns its base rate through `base`, not duplicated per category", () => {
@@ -256,10 +267,11 @@ test("Chase Freedom Unlimited earns its base rate through `base`, not duplicated
   assert.equal(template.earn.rentalChase, 5);
   assert.equal(template.earn.dining, 3);
   assert.equal(template.earn.drugstore, 3);
+  assert.equal(template.earn.lyft, 2);
   // Only the bonus categories are listed — every other category must come
   // from `base` rather than a repeated per-category entry.
   assert.deepEqual(Object.keys(template.earn).sort(),
-    ["dining", "drugstore", "flightsChase", "hotelsChase", "rentalChase"]);
+    ["dining", "drugstore", "flightsChase", "hotelsChase", "lyft", "rentalChase"]);
   state.cards.push({...JSON.parse(JSON.stringify(template)), on:true});
   assert.equal(cardResult("everything", "cfu").mult, 1.5);
   assert.equal(cardResult("retail", "cfu").mult, 1.5);
@@ -268,6 +280,9 @@ test("Chase Freedom Unlimited earns its base rate through `base`, not duplicated
   assert.equal(cardResult("dining", "cfu").mult, 3);
   assert.equal(cardResult("drugstore", "cfu").mult, 3);
   assert.equal(cardResult("flightsChase", "cfu").mult, 5);
+  // The current 2% total Lyft rate, through 30 September 2027.
+  assert.equal(cardResult("lyft", "cfu").mult, 2);
+  assert.match(template.caveat.lyft, /30 September 2027/);
   // A direct-booked flight gets no Chase Travel bonus.
   assert.equal(cardResult("flightsDirect", "cfu").mult, 1.5);
 });

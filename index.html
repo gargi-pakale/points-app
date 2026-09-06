@@ -689,7 +689,7 @@ const CARD_CATALOG = [
       flightsDirect:4, unitedFlights:4, hotelsDirect:4,
       dining:3, lyft:5},
     notes:["Relaunched card as of the 2025 refresh: $795 annual fee, 8x on all Chase Travel purchases (including The Edit), 4x on flights and hotels booked directly with the airline or hotel, and 3x on dining worldwide including takeout and eligible delivery. Rental cars, vacation rentals, transit, parking and everything else booked outside Chase Travel earn the 1x base rate.",
-      "A $300 Chase Travel credit each cardmember year offsets part of the annual fee when you book through Chase Travel. The app does not fold a statement credit into the ongoing reward rate above.",
+      "A $300 annual travel credit automatically reimburses the first $300 of purchases that code as travel each cardmember year — flights, hotels, rideshare, tolls, parking and more, charged anywhere, with no enrollment and no requirement to book through Chase Travel. Purchases covered by the credit do not earn points on this card. The app does not track credit usage or fold it into the reward rates above.",
       "Also includes complimentary Priority Pass Select and Chase Sapphire Lounge access, a DoorDash DashPass membership plus monthly DoorDash credits, Lyft ride credits and a Lyft earning bonus through 30 September 2027, and StubHub/viagogo and Peloton statement credits — see Chase's benefits guide for exact terms, caps and enrollment deadlines."],
     perk:{
       rentalCar:{t:"Primary rental car cover", priority:3, over:true,
@@ -699,7 +699,9 @@ const CARD_CATALOG = [
       flightsDirect:{t:"Trip delay and cancellation cover",
         b:"Delays over 6 hours reimburse up to $500 a traveler for reasonable expenses, and trip cancellation or interruption is covered up to $10,000 per traveler ($20,000 per trip), as long as you charge the fare to this card."},
       unitedFlights:{t:"Trip delay and cancellation cover",
-        b:"Delays over 6 hours reimburse up to $500 a traveler, and trip cancellation or interruption is covered up to $10,000 per traveler ($20,000 per trip)."}
+        b:"Delays over 6 hours reimburse up to $500 a traveler, and trip cancellation or interruption is covered up to $10,000 per traveler ($20,000 per trip)."},
+      flightsChase:{t:"Trip delay and cancellation cover",
+        b:"The same coverage applies to a flight booked through Chase Travel: delays over 6 hours reimburse up to $500 a traveler, and trip cancellation or interruption is covered up to $10,000 per traveler ($20,000 per trip)."}
     },
     caveat:{
       lyft:"5x on Lyft runs through 30 September 2027, and only for rides booked in the Lyft app.",
@@ -716,11 +718,12 @@ const CARD_CATALOG = [
     librarySummary:"5x Chase Travel · 3x dining & drugstores · 1.5x everywhere else",
     src:"chase.com/personal/credit-cards/freedom/unlimited + creditcards.chase.com/cash-back-credit-cards/freedom/unlimited — checked 6 Sep 2026",
     cur:"chase", af:0, ftf:3, mult:1, base:1.5,
-    earn:{flightsChase:5, hotelsChase:5, rentalChase:5, dining:3, drugstore:3},
+    earn:{flightsChase:5, hotelsChase:5, rentalChase:5, dining:3, drugstore:3, lyft:2},
     notes:["No annual fee. Earns 1.5x on everything that isn't a bonus category, uncapped, plus 3x on dining (including takeout and eligible delivery) and drugstores, and 5x on travel booked through Chase Travel — all permanent, unlimited rates with no rotating categories or quarterly caps.",
       "The app values this card's points at the shared Chase Ultimate Rewards rate set in My cards. On their own, Freedom Unlimited points are worth a flat 1 cent each toward cash back or a statement credit; they are only worth more if transferred into an account anchored by an eligible premium Chase card such as Sapphire Preferred, Sapphire Reserve or an Ink Business Preferred card."],
     caveat:{
-      dining:"Includes takeout and eligible delivery orders billed under a restaurant merchant code, not bakeries, caterers or meal-kit deliveries."
+      dining:"Includes takeout and eligible delivery orders billed under a restaurant merchant code, not bakeries, caterers or meal-kit deliveries.",
+      lyft:"2% total (0.5% on top of the 1.5% base) on qualifying Lyft rides, bikes and scooters bought in the Lyft app, through 30 September 2027. Excludes gift cards, car rentals, vehicle service centers and miscellaneous fees."
     }
   }
 ];

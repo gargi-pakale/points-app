@@ -72,8 +72,9 @@ fills $795 annual fee, no foreign transaction fee, Visa network, 8x on all
 Chase Travel purchases, 4x on flights and hotels booked directly with the
 airline or hotel, 3x dining, 1x base and its rental-car and trip protections.
 Freedom Unlimited fills no annual fee, 3% foreign transaction fee, Visa
-network, 5x Chase Travel, 3x dining and drugstores, and a 1.5x base rate with
-no other categories — everything outside those bonuses runs through `base`.
+network, 5x Chase Travel, 3x dining and drugstores, 2% total on Lyft through
+30 September 2027, and a 1.5x base rate — everything outside those bonuses
+runs through `base`.
 
 The library stays deliberately curated: an unknown card can be added blank and
 edited in the same card editor, but the app does not pretend an unsourced rate
@@ -172,9 +173,18 @@ Important distinctions:
   through 30 September 2027 (the same Lyft promo Sapphire Preferred has). Its
   primary rental-car cover is $75,000, matching Venture X's, so the two tie in
   priority and the app keeps recommending whichever you already had first
-  rather than picking one arbitrarily.
+  rather than picking one arbitrarily. Its trip delay and cancellation cover
+  applies to a flight booked directly, through United or through Chase
+  Travel — not only direct bookings.
+- **Chase Sapphire Reserve's $300 travel credit is not Chase-Travel-only.**
+  It automatically reimburses the first $300 a cardmember year spends on
+  anything that codes as travel — flights, hotels, rideshare, tolls, parking —
+  charged anywhere, no booking site required. Purchases covered by the
+  credit earn no points. The app does not track credit usage, so it is not
+  reflected in the reward rates shown.
 - **Chase Freedom Unlimited earns 5x only through Chase Travel, plus 3x
-  dining and drugstores; everything else runs through the 1.5x `base` rate,
+  dining and drugstores, and 2% total on qualifying Lyft rides through
+  30 September 2027; everything else runs through the 1.5x `base` rate,
   uncapped.** It has no rotating categories, unlike Freedom Flex.
 - **Bilt Blue earns 4x at participating Bilt Dining restaurants, 3x on hotels
   through Bilt Travel, 2x on flights through Bilt Travel and 3x on linked Lyft.**
@@ -225,9 +235,11 @@ fees, migrations, empty-card persistence, rental priorities and HTML escaping.
 - **BofA relationship multiplier is 1.5, and is temporary.** Expected to drop to
   1.25 around **November 2026**. Change the one field and everything recalculates.
   Online shopping goes 4.5% -> 3.75%.
-- **Sapphire Preferred's and Sapphire Reserve's 5x on Lyft both end 30 September 2027.**
-- **Sapphire Reserve's $300 Chase Travel credit and other statement credits
+- **Sapphire Preferred's and Sapphire Reserve's 5x on Lyft both end 30 September 2027,
+  as does Freedom Unlimited's 2% total Lyft rate.**
+- **Sapphire Reserve's $300 annual travel credit and other statement credits
   (DoorDash, Lyft, StubHub/viagogo, Peloton) are not modeled as reward rates.**
-  Check Chase's current benefits guide for their exact terms and deadlines
-  before relying on them.
+  The travel credit applies broadly to travel-coded purchases, not just Chase
+  Travel, and purchases it covers earn no points — check Chase's current
+  benefits guide for exact terms and deadlines before relying on any of these.
 - **Rates go stale.** Nothing here phones home. Worth a look once or twice a year.
