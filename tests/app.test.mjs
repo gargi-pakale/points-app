@@ -10,7 +10,7 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script, "index.html contains the application script");
 const core = script.split("/* ---- add a card ---- */")[0] + `
 globalThis.__whichCardTest = {
-  sheetCategories, SHEET_GROUPS, groupDetailHTML, rentalInsuranceHTML, rentalInsuranceOptions, renderSheet, renderAnswer, ask,
+  sheetCategories, detailHTML, annualFee, setAmexRole, amexFlightCapExhausted, rentalInsuranceHTML, rentalInsuranceOptions, renderSheet, renderAnswer, ask,
   APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, CARD_CATALOG, CARD_LIBRARY, MERCHANTS, SEARCH_SHORTCUTS,
   POINT_GROUPS, POINT_PROGRAMS, pointAmount, formatPoints, creditAmount, formatCredit, expiryLabel,
   freshState, load, migrate, applyRoute, rank, headline, baseHeadline,
@@ -429,7 +429,7 @@ test("legacy rental protection data is preserved without overriding rewards", ()
   assert.equal(cards.find(c => c.id === "bilt").perk.rentalCar.priority, 1);
   assert.equal(app.overridingPerk("rentalCar"), null);
   assert.equal(app.overridingPerk("rentalAgency"), null);
-  const citi = {...JSON.parse(JSON.stringify(app.CARD_CATALOG[0])), on:true};
+  const citi = {...JSON.parse(JSON.stringify(app.CARD_CATALOG.find(c => c.id === "citi-strata-premier"))), on:true};
   cards.push(citi);
   const rentalList = app.rank("rentalAgency").list;
   assert.equal(app.protectionRunner("rentalAgency", "ventx", rentalList).c.id, "csp");
@@ -485,27 +485,23 @@ test("sheet excludes portals in both modes while Ask retains category rules", ()
         assert.equal(r.mult, app.categoryMultiplier(r.c, id));
       }
     }
-    const grouped = app.SHEET_GROUPS.flatMap(g => Array.from(g.ids));
-    const expected = app.CATS.filter(c => !portals.includes(c.id) && !grouped.includes(c.id) && (!c.hide || showAll));
+    const expected = app.CATS.filter(c => !portals.includes(c.id) && c.sheet !== false && (!c.hide || showAll));
     assert.deepEqual(Array.from(app.sheetCategories().filter(c => !c.ids), c => c.id), Array.from(expected, c => c.id));
   }
 });
-test("groups render distinct winners and rates without changing saved state", () => {
+test("six restored rows retain individual winners and no grouping UI", () => {
   const state = reset({rent:0});
   state.cards.forEach(c => c.on = ["csp", "ventx"].includes(c.id));
-  const csp = state.cards.find(c => c.id === "csp");
-  const vx = state.cards.find(c => c.id === "ventx");
-  for(const g of app.SHEET_GROUPS){
-    csp.earn[g.ids[0]] = 9; vx.earn[g.ids[1]] = 10;
-  }
+  const csp = state.cards.find(c => c.id === "csp"), vx = state.cards.find(c => c.id === "ventx");
+  const pairs = [["retail", "drugstore"], ["transit", "travelOther"], ["rentalCar", "rentalAgency"]];
+  for(const [first, second] of pairs){ csp.earn[first] = 9; vx.earn[second] = 10; }
   const before = JSON.stringify(state);
-  for(const g of app.SHEET_GROUPS){
-    assert.equal(app.rank(g.ids[0]).list[0].c.id, "csp");
-    assert.equal(app.rank(g.ids[1]).list[0].c.id, "ventx");
-    const detail = app.groupDetailHTML(g);
-    assert.match(detail, /9x/); assert.match(detail, /10x/);
-    for(const id of g.ids) assert.ok(detail.includes(app.esc(app.CATS.find(c => c.id === id).label)));
+  for(const [first, second] of pairs){
+    for(const id of [first, second]) assert.equal(app.sheetCategories().filter(c => c.id === id).length, 1);
+    assert.equal(app.rank(first).list[0].c.id, "csp");
+    assert.equal(app.rank(second).list[0].c.id, "ventx");
   }
+  assert.doesNotMatch(html, /Compare by purchase type|SHEET_GROUPS|groupDetailHTML/);
   assert.equal(JSON.stringify(state), before);
 });
 test("rental insurance is conditional, compatible and not ranked by coverage limit", () => {
@@ -548,8 +544,8 @@ test("rental rewards winner without protection stays separate from insurance cho
   assert.equal(list[0].c.id, "prime");
   assert.equal(app.overridingPerk("rentalCar"), null);
   assert.ok(app.rentalInsuranceOptions("rentalCar", list).every(x => x.c.id !== "prime"));
-  const markup = app.groupDetailHTML(app.SHEET_GROUPS[0]);
-  assert.match(markup, /Best for rewards: Prime Visa/);
+  const markup = app.detailHTML("rentalCar", list);
+  assert.match(markup, /Prime Visa/);
   assert.doesNotMatch(markup, /Conditional choice: Prime Visa/);
   assert.match(markup, /percentage points below the rewards winner/);
 });
@@ -577,21 +573,18 @@ test("rental coverage distinguishes domestic, international and unknown location
   assert.match(app.rentalInsuranceHTML("rentalCar", list, {abroad:true}), /foreign merchant alone does not establish this/);
 });
 
-test("consolidated rentals show insurance once and retain both channel tradeoffs", () => {
+test("each independent rental row shows one insurance section and its own tradeoff", () => {
   const state = reset({rent:0});
   state.cards.find(c => c.id === "csp").earn.rentalAgency = 4;
-  const before = JSON.stringify(state);
-  const markup = app.groupDetailHTML(app.SHEET_GROUPS[0]);
-  assert.equal((markup.match(/Best for rental insurance/g) || []).length, 1);
-  assert.equal((markup.match(/Eligibility is unverified/g) || []).length, 1);
-  assert.equal((markup.match(/Recorded coverage:/g) || []).length, app.rentalInsuranceOptions("rentalCar", app.rank("rentalCar").list).length);
-  assert.equal((markup.match(/Best for rewards:/g) || []).length, 2);
-  assert.match(markup, /Direct: 2x/);
-  assert.match(markup, /Travel agency: 4x/);
-  assert.match(markup, /Also the rewards winner\./);
-  assert.match(markup, /Ties the rewards winner\./);
-  assert.doesNotMatch(markup, /[; ]0 percentage points below/);
-  assert.equal(JSON.stringify(state), before);
+  for(const cat of ["rentalCar", "rentalAgency"]){
+    const list = app.rank(cat).list;
+    const markup = app.detailHTML(cat, list);
+    assert.equal((markup.match(/Best for rental insurance/g) || []).length, 1);
+    assert.equal((markup.match(/Eligibility is unverified/g) || []).length, 1);
+    assert.equal((markup.match(/Recorded coverage:/g) || []).length, app.rentalInsuranceOptions(cat, list).length);
+    assert.match(markup, /Also the rewards winner\./);
+    assert.doesNotMatch(markup, /[; ]0 percentage points below/);
+  }
 });
 
 test("Ask render uses the international toggle for insurance without changing rewards", () => {
@@ -614,4 +607,143 @@ test("Ask render uses the international toggle for insurance without changing re
     app.ask.searchHit = null;
     delete context.document;
   }
+});
+
+function addAmex(){
+  const card = {...JSON.parse(JSON.stringify(app.CARD_CATALOG.find(c => c.id === "amex-platinum"))), on:true};
+  app.getState().cards.push(card);
+  return card;
+}
+const amexPortals = ["flightsAmex", "hotelsAmex", "airbnbAmex", "rentalAmex", "cruisesAmex", "vacationsAmex"];
+test("Amex is opt-in with shared editable Membership Rewards and no duplicate tracked program", () => {
+  const state = reset();
+  assert.ok(!state.cards.some(c => c.id === "amex-platinum"));
+  assert.equal(state.cpp.amex.cpp, 1.8);
+  const amex = addAmex();
+  assert.equal(amex.ftf, 0);
+  assert.equal(cardResult("flightsDirect", amex.id).pct, 9);
+  state.cpp.amex.cpp = 2;
+  assert.equal(cardResult("flightsDirect", amex.id).pct, 10);
+  state.val = "penny";
+  assert.equal(cardResult("flightsDirect", amex.id).pct, 5);
+  assert.equal(app.POINT_PROGRAMS.filter(p => p.id === "amex-membership-rewards").length, 1);
+});
+test("Amex earns only its eligible direct and portal rates, including 1x through agencies", () => {
+  reset(); const amex = addAmex();
+  for(const cat of ["flightsDirect", "unitedFlights", "flightsAmex", "hotelsAmex", "airbnbAmex"]) assert.equal(cardResult(cat, amex.id).mult, 5);
+  for(const cat of ["rentalAmex", "cruisesAmex", "vacationsAmex"]) assert.equal(cardResult(cat, amex.id).mult, 2);
+  for(const cat of ["travelAgency", "rentalAgency", "hotelsDirect", "vacationRental", "rentalCar", "dining", "groceries", "gas", "retail", "drugstore", "travelOther"]) assert.equal(cardResult(cat, amex.id).mult, 1);
+  for(const cat of portals) assert.ok(!cardResult(cat, amex.id));
+  for(const cat of amexPortals) assert.deepEqual(Array.from(app.rank(cat).list, r => r.c.id), [amex.id]);
+  assert.equal(cardResult("flightsDirect", amex.id, {abroad:true}).foreignFee, 0);
+  assert.ok(!cardResult("retail", amex.id, {network:"Visa"}));
+});
+test("all portals stay off Cheat Sheet in Show All and Amex booking searches retain intent", () => {
+  const state = reset(); addAmex();
+  for(const showAll of [false, true]){
+    state.showAll = showAll;
+    for(const id of [...portals, ...amexPortals]) assert.ok(!app.sheetCategories().some(c => c.id === id));
+  }
+  for(const [query, cat] of [
+    ["Amex Travel flights", "flightsAmex"], ["American Express Travel flight", "flightsAmex"],
+    ["Amex Travel prepaid hotels", "hotelsAmex"], ["Amex Travel prepaid Airbnb", "airbnbAmex"],
+    ["Amex Travel prepaid rental cars", "rentalAmex"], ["Amex Travel prepaid cruises", "cruisesAmex"],
+    ["Platinum Destinations Vacations", "vacationsAmex"],
+    ["Amex Travel non-prepaid hotel", "travelAgency"], ["Amex Travel rental car pay later", "travelAgency"],
+    ["flights through Amex Travel", "flightsAmex"], ["Amex Travel flights not prepaid", "flightsAmex"],
+    ["United flight through Expedia", "travelAgency"], ["Amex Travel Platinum Destinations Vacations", "vacationsAmex"],
+    ["third-party airline flights", "travelAgency"], ["Expedia flights", "travelAgency"], ["flights through third party", "travelAgency"]
+  ]) assert.equal(app.findSearchHit(query).cat, cat, query);
+  assert.equal(app.findSearchHit("Amex Travel"), null);
+});
+test("Amex annual flight cap affects all flight channels only and expires with the calendar year", () => {
+  reset(); const amex = addAmex(), year = new Date().getFullYear();
+  assert.match(amex.caveat.flightsDirect, /\$500,000.*calendar year.*all cards/);
+  assert.match(amex.caveat.flightsAmex, /1x afterward/);
+  amex.flightCapExhaustedYear = year;
+  for(const cat of ["flightsDirect", "unitedFlights", "flightsAmex"]) assert.equal(cardResult(cat, amex.id).mult, 1);
+  assert.equal(cardResult("hotelsAmex", amex.id).mult, 5);
+  assert.equal(cardResult("rentalAmex", amex.id).mult, 2);
+  assert.equal(app.amexFlightCapExhausted(amex, year + 1), false);
+  amex.flightCapExhaustedYear = null;
+  assert.equal(cardResult("flightsDirect", amex.id).mult, 5);
+});
+test("Primary and Additional roles preserve identical rankings and independent editable fees", () => {
+  reset(); const amex = addAmex();
+  assert.equal(amex.amexRole, "additional");
+  assert.equal(app.annualFee(amex), 195);
+  const rankings = () => JSON.stringify(app.CATS.map(c => app.rank(c.id).list.map(r => [r.c.id,r.mult,r.pct])));
+  const before = rankings();
+  app.setAmexRole(amex, "primary");
+  assert.equal(app.annualFee(amex), 895);
+  assert.equal(rankings(), before);
+  amex.af = 900; amex.additionalAf = 200;
+  app.setAmexRole(amex, "additional"); assert.equal(app.annualFee(amex), 200);
+  app.setAmexRole(amex, "primary"); assert.equal(app.annualFee(amex), 900);
+  assert.equal(cardResult("flightsDirect", amex.id).pct, 9);
+});
+test("Amex secondary rental coverage never becomes primary abroad or overrides rewards", () => {
+  reset({rent:0}); const amex = addAmex(); amex.earn.rentalCar = 10;
+  for(const cat of ["rentalCar", "rentalAgency", "rentalAmex"]){
+    const list = app.rank(cat).list;
+    for(const abroad of [false,true]){
+      const option = app.rentalInsuranceOptions(cat, list, {abroad}).find(x => x.c.id === amex.id);
+      assert.equal(option.primary, false);
+      assert.match(option.coverage.label, /Secondary cover/);
+      assert.match(app.rentalInsuranceHTML(cat, list, {abroad}), /Eligibility is unverified/);
+    }
+    assert.equal(app.overridingPerk(cat), null);
+  }
+  assert.equal(app.rank("rentalCar").list[0].c.id, amex.id);
+  assert.notEqual(app.rentalInsuranceOptions("rentalCar", app.rank("rentalCar").list)[0].c.id, amex.id);
+});
+test("upgrading preserves old settings, new Amex role, fees, cap, currency and tracked balances", () => {
+  const state = reset(); delete state.cpp.amex;
+  state.cpp.chase.cpp = 2.2;
+  state.cards[0].on = false;
+  state.cards = state.cards.filter(c => c.id !== "united");
+  state.balances = [{id:"saved", programId:"amex-membership-rewards", name:"Amex", group:"cards", balance:123456, expiryType:"never"}];
+  stored = JSON.stringify(state); app.load();
+  let loaded = app.getState();
+  assert.equal(loaded.cpp.amex.cpp, 1.8);
+  assert.equal(loaded.cpp.chase.cpp, 2.2);
+  assert.equal(loaded.cards[0].on, false);
+  assert.ok(!loaded.cards.some(c => ["united", "amex-platinum"].includes(c.id)));
+  const amex = addAmex(); amex.additionalAf = 123; amex.amexRole = "primary";
+  amex.flightCapExhaustedYear = new Date().getFullYear();
+  amex.earn.hotelsAmex = 6; amex.userOverrides = {earn:true}; loaded.cpp.amex.cpp = 2.1;
+  stored = JSON.stringify(loaded); app.load(); loaded = app.getState();
+  assert.equal(loaded.cpp.amex.cpp, 2.1);
+  assert.equal(loaded.balances[0].balance, 123456);
+  const restored = loaded.cards.find(c => c.id === amex.id);
+  assert.equal(restored.amexRole, "primary"); assert.equal(restored.additionalAf, 123);
+  assert.equal(restored.earn.hotelsAmex, 6); assert.ok(app.amexFlightCapExhausted(restored));
+});
+
+test("rendered restored row headers show their own winners and earning rates", () => {
+  reset({rent:0}); addAmex();
+  const nodes = new Map();
+  function element(){
+    const classes = new Set();
+    const row = {attrs:{}, setAttribute(k,v){ this.attrs[k] = v; }};
+    return {innerHTML:"", children:[], appendChild(e){ this.children.push(e); },
+      querySelector(){ return row; },
+      classList:{toggle(k){ if(classes.has(k)) classes.delete(k); else classes.add(k); }, contains(k){ return classes.has(k); }}};
+  }
+  context.document = {createElement:element, getElementById(id){ if(!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }};
+  try {
+    app.renderSheet();
+    for(const id of ["retail", "drugstore", "transit", "travelOther", "rentalCar", "rentalAgency"]){
+      const cat = app.CATS.find(c => c.id === id);
+      const card = nodes.get("sheet").children.find(c => c.innerHTML.includes('<b>' + cat.label + '</b>'));
+      assert.ok(card, id);
+      const header = card.innerHTML.split('</button>')[0];
+      const winner = app.rank(id).list[0];
+      assert.ok(header.includes(app.esc(winner.c.nick)));
+      assert.ok(header.includes(app.headline(winner)));
+      const button = card.querySelector(".row");
+      button.onclick({currentTarget:button}); assert.equal(button.attrs['aria-expanded'], 'true');
+      button.onclick({currentTarget:button}); assert.equal(button.attrs['aria-expanded'], 'false');
+    }
+  } finally { delete context.document; }
 });

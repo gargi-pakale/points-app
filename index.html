@@ -243,6 +243,8 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
 .edit{padding:0 14px 14px;border-top:1px solid var(--line)}
 .erow{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px}
 .erow span{flex:1}
+.erow.amex-role{flex-direction:column;align-items:stretch}
+.erow.amex-role select{width:100%;max-width:none}
 .erow input{width:78px;flex:none;padding:8px;text-align:right;font-size:15px}
 .erow input.wide{width:min(64%,260px);text-align:left}
 .erow .x{color:var(--muted);font-size:18px;padding:8px;cursor:pointer;flex:none;
@@ -463,7 +465,7 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 "use strict";
-const APP_VERSION = "2.3.2";
+const APP_VERSION = "2.4.0";
 const SCHEMA_VERSION = 3;
 const DATA_VERSION = "2026-08-29";
 const STORE_KEY = "cardpicker.v1";
@@ -475,6 +477,12 @@ const STORE_KEY = "cardpicker.v1";
    sheet but keeps it available to the Ask tab.
    ============================================================ */
 const CATS = [
+  {"id": "flightsAmex", "emo": "✈", "label": "Amex Travel flights", "short": "Amex Travel flights", "askHide": true, "sheet": false, "eligibleIds": ["amex-platinum"], "feeNote": "Scheduled flights booked through Amex Travel; account-wide annual flight cap applies."},
+  {"id": "hotelsAmex", "emo": "🏨", "label": "Amex Travel prepaid hotels", "short": "Amex Travel prepaid hotels", "askHide": true, "sheet": false, "eligibleIds": ["amex-platinum"], "feeNote": "Prepaid Amex Travel hotels only; pay-at-property bookings and bookings modified directly with the hotel do not qualify for 5x."},
+  {"id": "airbnbAmex", "emo": "🏖", "label": "Amex Travel prepaid Airbnb", "short": "Amex Travel prepaid Airbnb", "askHide": true, "sheet": false, "eligibleIds": ["amex-platinum"], "feeNote": "Prepaid Airbnb through AmexTravel.com or the Amex Travel App only; link your Airbnb account. Additional charges such as pet fees are excluded."},
+  {"id": "rentalAmex", "emo": "🚗", "label": "Amex Travel prepaid rental cars", "short": "Amex Travel prepaid rental cars", "askHide": true, "sheet": false, "eligibleIds": ["amex-platinum"], "feeNote": "2x requires prepaid rentals through AmexTravel.com or the Amex Travel App; non-prepaid rentals and fees are excluded.", "perkAs": "rentalCar"},
+  {"id": "cruisesAmex", "emo": "🚢", "label": "Amex Travel prepaid cruises", "short": "Amex Travel prepaid cruises", "askHide": true, "sheet": false, "eligibleIds": ["amex-platinum"], "feeNote": "2x requires prepaid cruises through AmexTravel.com or the number on the back of the card."},
+  {"id": "vacationsAmex", "emo": "🌴", "label": "Platinum Destinations Vacations", "short": "Platinum Destinations Vacations", "askHide": true, "sheet": false, "eligibleIds": ["amex-platinum"], "feeNote": "2x requires qualifying Platinum Destination Vacation bookings by calling the number on the card; separate airfare and other charges are excluded."},
   {id:"rent",         emo:"\u{1F3E0}", label:"Rent", short:"Rent", alias:"rent mortgage landlord", hide:true, fee:3,
    feeNote:"Landlords and rent portals charge about 3% to take a credit card. That fee is subtracted below, which is why almost every card ends up losing you money on rent."},
   {id:"dining",       emo:"\u{1F37D}", label:"Dining & restaurants", short:"Dining / Takeout", alias:"restaurant cafe coffee starbucks bar pub takeout doordash uber eats grubhub seamless caviar food delivery brunch dinner lunch"},
@@ -518,6 +526,7 @@ const CATS = [
    POINT CURRENCIES  (cpp = cents per point)
    ============================================================ */
 const DEFAULT_CPP = {
+  amex:   {name:"Amex Membership Rewards", cpp:1.8},
   chase:  {name:"Chase Ultimate Rewards", cpp:1.8},
   bilt:   {name:"Bilt Points",            cpp:1.8},
   capone: {name:"Capital One Miles",      cpp:1.8},
@@ -648,6 +657,101 @@ const DEFAULT_CARDS = [
    small: a wrong template is worse than asking the user to fill in a blank. */
 const CARD_CATALOG = [
   {
+    "id": "amex-platinum",
+    "issuer": "American Express",
+    "network": "American Express",
+    "tint": "#626c75",
+    "name": "American Express Platinum Card",
+    "nick": "Amex Platinum",
+    "alias": "amex platinum american express consumer primary additional",
+    "librarySummary": "5x eligible flights & Amex prepaid lodging · 2x qualifying Amex Travel · 1x else",
+    "src": "Official U.S. Consumer Platinum and Amex Travel terms — checked 1 Nov 2026",
+    "cur": "amex",
+    "af": 895,
+    "additionalAf": 195,
+    "amexRole": "additional",
+    "ftf": 0,
+    "mult": 1,
+    "base": 1,
+    "earn": {
+      "flightsDirect": 5,
+      "unitedFlights": 5,
+      "flightsAmex": 5,
+      "hotelsAmex": 5,
+      "airbnbAmex": 5,
+      "rentalAmex": 2,
+      "cruisesAmex": 2,
+      "vacationsAmex": 2
+    },
+    "notes": [
+      "5x on eligible scheduled airline-direct or Amex Travel flights, up to $500,000 per calendar year across all cards on the account; 1x afterward. Excludes charter/private flights, package airfare and service/change fees. Third-party agencies default to 1x. Confirm remaining cap; split purchases crossing it.",
+      "Amounts covered with Membership Rewards points do not earn points; merchant processing must identify the purchase as eligible.",
+      "Both Primary and paid Additional Platinum earn at the same rates. Rewards accrue to the Primary Card Member’s Membership Rewards account; both roles use the same editable household valuation. This template is not the $0 Companion Card.",
+      "Global Lounge Collection access includes eligible paid Additional Platinum Members. Priority Pass enrollment is required; each lounge has admission, guest and visit restrictions. Verify access for your itinerary.",
+      "Standard rental protection is secondary, including abroad; paid Premium Car Rental Protection is a separate optional product and is not assumed here.",
+      "Travel protections: eligible round-trip payment and covered reasons are required for trip delay and cancellation/interruption. Baggage protection requires eligible common-carrier fare payment. Check current guides for covered people and exclusions.",
+      "Shopping protections: purchase protection, extended warranty and return protection have item, time and account limits; eligibility is conditional."
+    ],
+    "perk": {
+      "rentalCar": {
+        "t": "Secondary rental car cover",
+        "b": "Secondary damage/theft coverage, if eligible; reserve and pay the entire rental with the card and decline the rental company’s CDW; excludes liability and rentals in Australia, Italy and New Zealand; vehicle and rental exclusions apply"
+      },
+      "flightsDirect": {
+        "t": "Conditional trip and baggage protections",
+        "b": "Trip delay and cancellation/interruption require an eligible round trip paid entirely with the card and a covered reason. Baggage protection requires eligible common-carrier fare payment. Verify covered persons, limits and exclusions in the benefit guides; coverage is not guaranteed."
+      },
+      "unitedFlights": {
+        "t": "Conditional trip and baggage protections",
+        "b": "Trip delay and cancellation/interruption require an eligible round trip paid entirely with the card and a covered reason. Baggage protection requires eligible common-carrier fare payment. Verify covered persons, limits and exclusions in the benefit guides; coverage is not guaranteed."
+      },
+      "flightsAmex": {
+        "t": "Conditional trip and baggage protections",
+        "b": "Trip delay and cancellation/interruption require an eligible round trip paid entirely with the card and a covered reason. Baggage protection requires eligible common-carrier fare payment. Verify covered persons, limits and exclusions in the benefit guides; coverage is not guaranteed."
+      },
+      "retail": {
+        "t": "Conditional purchase protections",
+        "b": "Purchase protection, extended warranty and return protection may apply to eligible purchases charged to the card; item exclusions, time limits and account limits apply. Check the benefit guides before relying on coverage."
+      },
+      "online": {
+        "t": "Conditional purchase protections",
+        "b": "Purchase protection, extended warranty and return protection may apply to eligible purchases charged to the card; item exclusions, time limits and account limits apply. Check the benefit guides before relying on coverage."
+      }
+    },
+    "caveat": {
+      "flightsDirect": "5x on eligible scheduled airline-direct or Amex Travel flights, up to $500,000 per calendar year across all cards on the account; 1x afterward. Excludes charter/private flights, package airfare and service/change fees. Third-party agencies default to 1x. Confirm remaining cap; split purchases crossing it.",
+      "unitedFlights": "5x on eligible scheduled airline-direct or Amex Travel flights, up to $500,000 per calendar year across all cards on the account; 1x afterward. Excludes charter/private flights, package airfare and service/change fees. Third-party agencies default to 1x. Confirm remaining cap; split purchases crossing it.",
+      "flightsAmex": "5x on eligible scheduled airline-direct or Amex Travel flights, up to $500,000 per calendar year across all cards on the account; 1x afterward. Excludes charter/private flights, package airfare and service/change fees. Third-party agencies default to 1x. Confirm remaining cap; split purchases crossing it.",
+      "travelAgency": "Third-party travel-agency bookings default to 1x; airline-related purchases alone do not establish eligibility for 5x.",
+    },
+    "sources": [
+      {
+        "label": "Amex travel earning terms",
+        "url": "https://www.americanexpress.com/en-us/travel/platinum-card-hotel-programs/"
+      },
+      {
+        "label": "Prepaid Airbnb terms",
+        "url": "https://www.americanexpress.com/en-us/travel/airbnb/"
+      },
+      {
+        "label": "Platinum fees and protections",
+        "url": "https://www.americanexpress.com/us/credit-cards/card/platinum/"
+      },
+      {
+        "label": "Additional Platinum benefits",
+        "url": "https://www.americanexpress.com/en-us/account/get-started/additional-card-member/platinum"
+      },
+      {
+        "label": "Membership Rewards ownership and transfers",
+        "url": "https://www.americanexpress.com/us/rewards/membership-rewards/terms/"
+      },
+      {
+        "label": "Travel and baggage benefit details",
+        "url": "https://global.americanexpress.com/card-benefits/view-all/platinum"
+      }
+    ]
+  },
+  {
     id:"citi-strata-premier", issuer:"Citi", network:"Mastercard", tint:"#153a70",
     name:"Citi Strata Premier", nick:"Strata Premier",
     alias:"citi strata premier primer citi premier thankyou travel",
@@ -747,6 +851,9 @@ const MERCHANTS = [
 
 // Search-only merchant phrases. These improve typing without adding visible chips.
 const SEARCH_SHORTCUTS = [
+  {"q": "platinum destinations vacations", "cat": "vacationsAmex", "how": "online"},
+  {"q": "platinum destination vacation", "cat": "vacationsAmex", "how": "online"},
+
   {q:"uber eats", cat:"dining"}, {q:"doordash", cat:"dining"},
   {q:"grubhub", cat:"dining"}, {q:"uber", cat:"transit"},
   {q:"whole foods", cat:"amazon"}, {q:"amazon", cat:"amazon", how:"online"},
@@ -966,7 +1073,23 @@ function biltHousingRate(){
   if(ratio >= 0.25) return 0.5;
   return Math.min(1.25, 250 / rent);
 }
+const AMEX_FLIGHT_CATS = ["flightsDirect", "unitedFlights", "flightsAmex"];
+function amexFlightCapExhausted(card, year = new Date().getFullYear()){
+  return card.id === "amex-platinum" && card.flightCapExhaustedYear === year;
+}
+function amexCapNote(cat, list){
+  return AMEX_FLIGHT_CATS.includes(cat) && list.some(r => amexFlightCapExhausted(r.c))
+    ? '<div class="note warn">Amex flight cap marked reached for this calendar year: new eligible flight charges earn 1x. Change this setting in My cards if needed.</div>' : "";
+}
+function annualFee(card){
+  return card.id === "amex-platinum" && card.amexRole === "additional" ? finiteNumber(card.additionalAf, 195) : finiteNumber(card.af, 0);
+}
+function setAmexRole(card, role){
+  if(card.id !== "amex-platinum" || !["primary", "additional"].includes(role)) return;
+  card.amexRole = role;
+}
 function categoryMultiplier(card, cat){
+  if(amexFlightCapExhausted(card) && AMEX_FLIGHT_CATS.includes(cat)) return 1;
   if(card.id === "bilt" && cat === "rent"){
     return S.biltOption === "housing" ? biltHousingRate() : (S.plusSpent ? 0 : 1);
   }
@@ -1012,6 +1135,7 @@ function rank(cat, opt, mode){
     kept.push({ c, mult, relm, fee, processingFee, foreignFee, plus,
       pct: mult * relm * cppOf(c, mode) + plus - fee });
   }
+  // Amex af is the Primary fee in both roles; additionalAf is display-only, so role changes cannot reorder ties.
   kept.sort((a,b) => b.pct - a.pct || Number(a.c.af) - Number(b.c.af));
   return { list: kept, dropped };
 }
@@ -1087,50 +1211,14 @@ const SHEET_EXCLUDED = new Set([
   "flightsChase", "hotelsChase", "rentalChase", "flightsCapone", "hotelsCapone", "rentalCapone",
   "flightsBilt", "hotelsBilt", "biltDining", "hotelsCiti", "rentalCiti", "attractionsCiti"
 ]);
-const SHEET_GROUPS = [
-  {id:"rentals", label:"Rental Cars", ids:["rentalCar", "rentalAgency"]},
-  {id:"transportation", label:"Transportation & Other Travel", ids:["transit", "travelOther"]},
-  {id:"shopping", label:"Shopping & Drugstores", ids:["retail", "drugstore"]}
-];
 function sheetCategories(){
-  return CATS.filter(c => !SHEET_EXCLUDED.has(c.id) && (!c.hide || S.showAll))
-    .flatMap(c => {
-      const group = SHEET_GROUPS.find(g => g.ids.includes(c.id));
-      return !group ? [c] : c.id === group.ids[0] ? [{...group, emo:c.emo}] : [];
-    });
-}
-function groupDetailHTML(group){
-  const rentals = group.id === "rentals";
-  const details = group.ids.map(id => {
-    const cat = catById(id), {list} = rank(id);
-    return '<div class="note"><b>' + esc(cat.label) + '</b></div>' +
-      (list.length ? '<div class="note"><b>Best for rewards: ' + esc(list[0].c.nick) +
-       '</b> · ' + headline(list[0]) + ' · ' + fmt(list[0].pct) + '% estimated net reward value</div>' +
-       detailHTML(id, list, winnerFlips(id), rentals) : '<div class="note">No compatible card enabled.</div>');
-  }).join("");
-  if(!rentals) return details;
-  const channels = group.ids.map(id => ({cat:id, label:id === "rentalCar" ? "Direct" : "Travel agency", list:rank(id).list}));
-  return details + rentalInsuranceHTML("rentalCar", channels[0].list, {}, channels);
+  return CATS.filter(c => c.sheet !== false && !SHEET_EXCLUDED.has(c.id) && (!c.hide || S.showAll));
 }
 function renderSheet(){
   const host = document.getElementById("sheet");
   host.innerHTML = "";
 
   for(const cat of sheetCategories()){
-    if(cat.ids){
-      const el = document.createElement("div");
-      el.className = "card";
-      el.innerHTML = '<button type="button" class="row" aria-expanded="false"><span class="emo">' + cat.emo +
-        '</span><span class="lab"><b>' + esc(cat.label) +
-        '</b><span class="submeta">Compare by purchase type</span></span><span class="chev">&#9656;</span></button>' +
-        '<div class="detail">' + groupDetailHTML(cat) + '</div>';
-      el.querySelector(".row").onclick = e => {
-        el.classList.toggle("open");
-        e.currentTarget.setAttribute("aria-expanded", String(el.classList.contains("open")));
-      };
-      host.appendChild(el);
-      continue;
-    }
     const {list} = rank(cat.id);
     if(!list.length) continue;
     let best = list[0];
@@ -1172,8 +1260,8 @@ function renderSheet(){
 
 function isTie(a, b){ return a && b && Math.abs(a.pct - b.pct) < 0.05; }
 
-function detailHTML(catId, list, flip, skipRentalInsurance = false){
-  let h = "";
+function detailHTML(catId, list, flip){
+  let h = amexCapNote(catId, list);
   const meta = catById(catId);
   const cap = plusCeiling();
   if(cap && list[0] && list[0].c.id === cap.card.id && list[0].plus){
@@ -1188,7 +1276,7 @@ function detailHTML(catId, list, flip, skipRentalInsurance = false){
          'and the app will tell you how far it stretches.</div>';
   }
   if(!isRental(catId)) h += perkHTML(catId, list[0] && list[0].c.id);
-  else if(!skipRentalInsurance) h += rentalInsuranceHTML(catId, list);
+  else h += rentalInsuranceHTML(catId, list);
   if(isTie(list[0], list[1])){
     h += '<div class="note">Dead heat between <b>' + esc(list[0].c.nick) + '</b> and <b>' +
          esc(list[1].c.nick) + '</b> — either is fine. The app lists the one with the smaller ' +
@@ -1259,7 +1347,22 @@ function normaliseSearch(value){
 function findSearchHit(value){
   const q = normaliseSearch(value);
   if(!q) return null;
-  if(["chase travel","capital one travel","bilt travel","citi travel"].includes(q)) return null;
+  if(["chase travel","capital one travel","bilt travel","citi travel","amex travel","american express travel"].includes(q)) return null;
+  // Resolve an explicitly named Amex portal before generic airline/hotel shortcuts.
+  if(/\b(?:amex|american express) travel\b/.test(q)){
+    const flight = /\b(?:flights?|airlines?|airfare)\b/.test(q);
+    const nonPrepaid = /\b(?:non prepaid|not prepaid|pay later|pay at (?:property|hotel|counter))\b/.test(q);
+    const cat = /\bplatinum destinations? vacations?\b/.test(q) ? "vacationsAmex"
+      : flight ? "flightsAmex" : nonPrepaid ? "travelAgency"
+      : /\bhotels?\b/.test(q) ? "hotelsAmex" : /\bairbnb\b/.test(q) ? "airbnbAmex"
+      : /\b(?:rental cars?|car rentals?)\b/.test(q) ? "rentalAmex"
+      : /\bcruises?\b/.test(q) ? "cruisesAmex" : null;
+    return cat ? {cat, label:catById(cat).label, how:"online", mi:null} : null;
+  }
+  if(/\b(?:third party|travel agenc(?:y|ies)|expedia|booking com|priceline|kayak|orbitz|costco travel)\b/.test(q) && /\b(?:flights?|airlines?)\b/.test(q)){
+    const mi = MERCHANTS.findIndex(m => m.cat === "travelAgency" && q.includes(normaliseSearch(m.n)));
+    return {cat:"travelAgency", label:"Third-party agency flight", how:"online", mi:mi < 0 ? null : mi};
+  }
   const shortcuts = SEARCH_SHORTCUTS.slice().sort((a,b) => b.q.length - a.q.length);
   const toHit = shortcut => {
     const merchant = shortcut.merchant && MERCHANTS.find(m => m.n === shortcut.merchant);
@@ -1342,7 +1445,7 @@ function renderChips(autoPick){
       const d = document.createElement("div");
       d.className = "nohit";
       const entered = normaliseSearch(document.getElementById("search").value);
-      d.textContent = ["chase travel","capital one travel","bilt travel","citi travel"].includes(entered)
+      d.textContent = ["chase travel","capital one travel","bilt travel","citi travel","amex travel","american express travel"].includes(entered)
         ? "Add what you are booking: flight, hotel or rental car. Portal rates and insurance depend on the subtype."
         : 'Nothing matches "' + document.getElementById("search").value.trim() +
           '". Try a merchant such as Gap or Expedia, or a category such as shopping or groceries.';
@@ -1434,7 +1537,7 @@ function perksFor(cat){
     .map(c => ({ c, p:c.perk[cat] || c.perk[perkCat] }));
 }
 function isRental(cat){
-  return ["rentalCar", "rentalAgency", "rentalChase", "rentalCapone", "rentalCiti"].includes(cat);
+  return ["rentalCar", "rentalAgency", "rentalChase", "rentalCapone", "rentalCiti", "rentalAmex"].includes(cat);
 }
 // Read existing descriptions without changing saved card metadata. The international
 // toggle describes the purchase, not residence or necessarily the rental location.
@@ -1448,6 +1551,7 @@ function rentalCoverage(perk, opt = {}){
   if(/^Primary /i.test(perk.t) || /^Primary /i.test(body)){
     return {primary:true, label:"Primary cover, if eligible."};
   }
+  if(/^Secondary /i.test(perk.t) || /^Secondary /i.test(body)) return {primary:false, label:"Secondary cover, if eligible; the international toggle does not make it primary."};
   return {primary:false, label:"Coverage type unverified; check the benefits guide."};
 }
 function rentalInsuranceOptions(cat, list, opt = {}){
@@ -1463,14 +1567,13 @@ function rentalRewardTradeoff(reward, list){
   if(gap < 0.005) return "Ties the rewards winner.";
   return fmt(gap) + " percentage points below the rewards winner.";
 }
-function rentalInsuranceHTML(cat, list, opt = {}, channels = null){
+function rentalInsuranceHTML(cat, list, opt = {}){
   const options = rentalInsuranceOptions(cat, list, opt);
   let h = '<div class="note warn"><b>Best for rental insurance — conditional</b><br>' +
     'Eligibility is unverified. Confirm the current benefits guide, destination, vehicle, rental duration, ' +
     'coverage limit and exclusions, payment requirements and declining the rental company’s collision waiver. ' +
     'For agency bookings, also verify how payment is processed. Primary coverage is preferred here; ' +
-    'among those options, higher reward value breaks the tie. A higher limit alone does not decide.' +
-    (channels ? ' Coverage descriptions apply to both booking types; the choice below uses direct-booking rewards to break ties. Compare agency rewards separately.' : '') + '</div>';
+    'among those options, higher reward value breaks the tie. A higher limit alone does not decide.</div>';
   if(!options.length) return h + '<div class="note">No compatible enabled card has rental protection recorded. This does not establish that other cards lack coverage.</div>';
   for(const [i, x] of options.entries()){
     // Only summarize the recorded coverage sentence; omit legacy marketing comparisons and guarantees.
@@ -1478,12 +1581,8 @@ function rentalInsuranceHTML(cat, list, opt = {}, channels = null){
     h += '<div class="perk"><div class="pt">' + (i === 0 ? 'Conditional choice: ' : 'Alternative: ') + esc(x.c.nick) +
       '</div><div class="pb">' + esc(x.coverage.label) + ' Recorded coverage: ' + esc(summary) + '. ' +
       'Verify eligibility before relying on this protection.</div>';
-    for(const channel of channels || [{cat, list}]){
-      const reward = channel.list.find(r => r.c.id === x.c.id);
-      if(!reward) continue;
-      h += '<div class="pb">' + (channel.label ? esc(channel.label) + ': ' : '') + earnLabel(reward) +
-        ' · ' + fmt(reward.pct) + '% estimated net reward value. ' + rentalRewardTradeoff(reward, channel.list) + '</div>';
-    }
+    h += '<div class="pb">' + earnLabel(x.reward) + ' · ' + fmt(x.reward.pct) +
+      '% estimated net reward value. ' + rentalRewardTradeoff(x.reward, list) + '</div>';
     h += '</div>';
   }
   return h;
@@ -1524,7 +1623,7 @@ function shade(hex){
 
 function faceHTML(r){
   const c = r.c;
-  const fee = Number(c.af) ? "$" + c.af + "/yr" : "No annual fee";
+  const fee = annualFee(c) ? "$" + annualFee(c) + "/yr" : "No annual fee";
   const cur = (c.cur === "cash") ? "Cash back" : esc(curName(c.cur)) + " @ " + fmt(cppOf(c)) + "¢/pt";
   const ftf = Number(c.ftf) ? fmt(c.ftf) + "% abroad" : "No foreign fee";
   const tint = safeColor(c.tint);
@@ -1597,7 +1696,8 @@ function renderAnswer(){
        '</div>';
 
   // Everything that qualifies the answer sits below the card, not inside it.
-  h += isRental(cat) ? rentalInsuranceHTML(cat, list, {abroad:ask.abroad}) : perkHTML(cat, best.c.id, true);
+  h += amexCapNote(cat, list);
+  h += isRental(cat) ? rentalInsuranceHTML(cat, list, {abroad:ask.abroad}) : perkHTML(cat, best.c.id, best.c.id !== "amex-platinum");
 
   const cap = plusCeiling();
   if(cap && best.c.id === cap.card.id && best.plus){
@@ -1679,7 +1779,7 @@ function renderCards(){
     el.dataset.id = card.id;
 
     const feeBits = [];
-    feeBits.push(Number(card.af) ? "$" + card.af + " a year" : "No annual fee");
+    feeBits.push(annualFee(card) ? "$" + annualFee(card) + " a year" : "No annual fee");
     if(Number(card.ftf)) feeBits.push(fmt(card.ftf) + "% foreign fee");
     else feeBits.push("no foreign fee");
 
@@ -1725,6 +1825,36 @@ function fillEditor(box, card){
     r.appendChild(i);
     box.appendChild(r);
   };
+
+  if(card.id === "amex-platinum"){
+    const row = document.createElement("label"); row.className = "erow amex-role";
+    const label = document.createElement("span"); label.textContent = "Cardholder role";
+    const select = document.createElement("select"); select.setAttribute("aria-label", "Cardholder role");
+    [["primary", "Primary Platinum Card Member"], ["additional", "Additional Platinum Card Member"]].forEach(([value, text]) => {
+      const option = document.createElement("option"); option.value = value; option.textContent = text;
+      option.selected = (card.amexRole || "primary") === value; select.appendChild(option);
+    });
+    select.onchange = () => { setAmexRole(card, select.value); save(); renderCards(); renderSheet(); renderAnswer(); };
+    row.appendChild(label); row.appendChild(select); box.appendChild(row);
+    const info = document.createElement("div"); info.className = "note";
+    info.textContent = (card.amexRole === "additional"
+      ? "Paid Additional Platinum: your spending earns into the Primary Member’s rewards account; you do not have a separate rewards account. Coordinate redemptions with the Primary Member."
+      : "Primary Platinum: rewards from all cards accrue to your Membership Rewards account; you control redemptions.") +
+      " Both roles use the same household points value. Transfers to an Additional Member’s loyalty account require the Additional Card to have been issued at least 90 days before linking. Standard fees: $895 Primary / $195 Additional; edit the selected role’s fee below. Fees are not deducted from purchase rewards.";
+    box.appendChild(info);
+    const cap = document.createElement("label"); cap.className = "toggle";
+    const year = new Date().getFullYear();
+    cap.innerHTML = '<input type="checkbox"' + (amexFlightCapExhausted(card) ? ' checked' : '') +
+      '><span>Account has reached the $500,000 flight bonus cap in ' + year + '</span>';
+    cap.querySelector("input").onchange = e => {
+      card.flightCapExhaustedYear = e.target.checked ? year : null;
+      save(); renderSheet(); renderAnswer();
+    };
+    box.appendChild(cap);
+    const capNote = document.createElement("p"); capNote.className = "hint";
+    capNote.textContent = "Includes eligible flight charges on all Primary and Additional cards, across direct airlines and Amex Travel. Checked: 1x on new flight charges; unchecked: assumes cap remains. No automatic spending tracking. Recheck each calendar year and split a purchase that crosses the cap.";
+    box.appendChild(capNote);
+  }
 
   const head = document.createElement("h2");
   head.className = "sec"; head.style.margin = "12px 0 2px";
@@ -1827,7 +1957,8 @@ function fillEditor(box, card){
       }, "0.5", "plus");
   }
   num("Relationship / status multiplier", card.mult || 1, v => card.mult = v, "0.05", "mult");
-  num("Annual fee ($)", card.af, v => card.af = v, "5", "af");
+  const feeField = card.id === "amex-platinum" && card.amexRole === "additional" ? "additionalAf" : "af";
+  num("Annual fee ($)", annualFee(card), v => card[feeField] = v, "5", feeField);
   num("Foreign transaction fee (%)", card.ftf, v => card.ftf = v, "0.5", "ftf");
 
   const networkRow = document.createElement("label");
@@ -1862,6 +1993,12 @@ function fillEditor(box, card){
     d.textContent = "Rates from: " + card.src;
     box.appendChild(d);
   }
+  (card.sources || []).forEach(source => {
+    if(!/^https:\/\/([a-z0-9-]+\.)*americanexpress\.com\//i.test(source.url || "")) return;
+    const p = document.createElement("p"); p.className = "hint";
+    const a = document.createElement("a"); a.href = source.url; a.textContent = source.label;
+    a.target = "_blank"; a.rel = "noopener noreferrer"; p.appendChild(a); box.appendChild(p);
+  });
   (card.notes || []).forEach(n => {
     const d = document.createElement("div");
     d.className = "note"; d.textContent = n;
