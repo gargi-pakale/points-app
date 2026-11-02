@@ -10,6 +10,7 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script, "index.html contains the application script");
 const core = script.split("/* ---- add a card ---- */")[0] + `
 globalThis.__whichCardTest = {
+  sheetCategories, SHEET_GROUPS, groupDetailHTML, rentalInsuranceHTML, rentalInsuranceOptions, renderSheet, renderAnswer, ask,
   APP_VERSION, DATA_VERSION, CATS, DEFAULT_CARDS, CARD_CATALOG, CARD_LIBRARY, MERCHANTS, SEARCH_SHORTCUTS,
   POINT_GROUPS, POINT_PROGRAMS, pointAmount, formatPoints, creditAmount, formatCredit, expiryLabel,
   freshState, load, migrate, applyRoute, rank, headline, baseHeadline,
@@ -231,11 +232,9 @@ test("Chase Sapphire Reserve template separates Chase Travel from direct booking
   // A direct-booked rental car has no modeled bonus, so it falls to the 1x base.
   assert.equal(cardResult("rentalCar", "csr").mult, 1);
   assert.equal(app.baseHeadline(template, "everything"), "1x");
-  // Rental car cover ties Venture X's $75k rather than displacing an
-  // existing card's recommendation, but wins outright for the Chase-portal
-  // category where Venture X has no competing perk.
-  assert.equal(app.overridingPerk("rentalCar").c.id, "ventx");
-  assert.equal(app.overridingPerk("rentalChase").c.id, "csr");
+  // Rental protection never displaces a rewards winner, including portal bookings.
+  assert.equal(app.overridingPerk("rentalCar"), null);
+  assert.equal(app.overridingPerk("rentalChase"), null);
   const csrCard = state.cards.find(c => c.id === "csr");
   const ventxCard = state.cards.find(c => c.id === "ventx");
   assert.equal(csrCard.perk.rentalCar.priority, ventxCard.perk.rentalCar.priority);
@@ -422,20 +421,20 @@ test("foreign fees are subtracted instead of disqualifying a card", () => {
   assert.equal(bofa.pct, 1.5);
 });
 
-test("rental protection priorities keep Venture X first and Sapphire second", () => {
+test("legacy rental protection data is preserved without overriding rewards", () => {
   reset();
   const cards = app.getState().cards;
   assert.equal(cards.find(c => c.id === "ventx").perk.rentalCar.priority, 3);
   assert.equal(cards.find(c => c.id === "csp").perk.rentalCar.priority, 2);
   assert.equal(cards.find(c => c.id === "bilt").perk.rentalCar.priority, 1);
-  assert.equal(app.overridingPerk("rentalCar").c.id, "ventx");
-  assert.equal(app.overridingPerk("rentalAgency").c.id, "ventx");
+  assert.equal(app.overridingPerk("rentalCar"), null);
+  assert.equal(app.overridingPerk("rentalAgency"), null);
   const citi = {...JSON.parse(JSON.stringify(app.CARD_CATALOG[0])), on:true};
   cards.push(citi);
   const rentalList = app.rank("rentalAgency").list;
   assert.equal(app.protectionRunner("rentalAgency", "ventx", rentalList).c.id, "csp");
   cards.find(c => c.id === "ventx").on = false;
-  assert.equal(app.overridingPerk("rentalCar").c.id, "csp");
+  assert.equal(app.overridingPerk("rentalCar"), null);
   cards.find(c => c.id === "csp").on = false;
   assert.equal(app.overridingPerk("rentalCar"), null);
 });
@@ -471,4 +470,148 @@ test("primary mobile controls expose names and state to assistive technology", (
   assert.match(html, /Manual only\. Balances stay in this browser/);
   assert.match(html, /data-tab="points"/);
   assert.doesNotMatch(html, /prompt\(/);
+});
+
+const portals = ["flightsChase","hotelsChase","rentalChase","flightsCapone","hotelsCapone","rentalCapone","flightsBilt","hotelsBilt","biltDining","hotelsCiti","rentalCiti","attractionsCiti"];
+test("sheet excludes portals in both modes while Ask retains category rules", () => {
+  for(const showAll of [false, true]){
+    reset({showAll});
+    for(const id of portals){
+      assert.ok(!app.sheetCategories().some(c => c.id === id));
+      assert.equal(app.findSearchHit(id).cat, id);
+      const meta = app.CATS.find(c => c.id === id);
+      for(const r of app.rank(id).list){
+        if(meta.eligibleIds) assert.ok(meta.eligibleIds.includes(r.c.id));
+        assert.equal(r.mult, app.categoryMultiplier(r.c, id));
+      }
+    }
+    const grouped = app.SHEET_GROUPS.flatMap(g => Array.from(g.ids));
+    const expected = app.CATS.filter(c => !portals.includes(c.id) && !grouped.includes(c.id) && (!c.hide || showAll));
+    assert.deepEqual(Array.from(app.sheetCategories().filter(c => !c.ids), c => c.id), Array.from(expected, c => c.id));
+  }
+});
+test("groups render distinct winners and rates without changing saved state", () => {
+  const state = reset({rent:0});
+  state.cards.forEach(c => c.on = ["csp", "ventx"].includes(c.id));
+  const csp = state.cards.find(c => c.id === "csp");
+  const vx = state.cards.find(c => c.id === "ventx");
+  for(const g of app.SHEET_GROUPS){
+    csp.earn[g.ids[0]] = 9; vx.earn[g.ids[1]] = 10;
+  }
+  const before = JSON.stringify(state);
+  for(const g of app.SHEET_GROUPS){
+    assert.equal(app.rank(g.ids[0]).list[0].c.id, "csp");
+    assert.equal(app.rank(g.ids[1]).list[0].c.id, "ventx");
+    const detail = app.groupDetailHTML(g);
+    assert.match(detail, /9x/); assert.match(detail, /10x/);
+    for(const id of g.ids) assert.ok(detail.includes(app.esc(app.CATS.find(c => c.id === id).label)));
+  }
+  assert.equal(JSON.stringify(state), before);
+});
+test("rental insurance is conditional, compatible and not ranked by coverage limit", () => {
+  const state = reset({rent:0});
+  state.cards.find(c => c.id === "csp").earn.rentalCar = 9;
+  const list = app.rank("rentalCar").list;
+  assert.equal(list[0].c.id, "csp");
+  assert.equal(app.overridingPerk("rentalCar"), null);
+  assert.equal(app.rentalInsuranceOptions("rentalCar", list)[0].c.id, "csp");
+  const markup = app.rentalInsuranceHTML("rentalCar", list);
+  assert.match(markup, /Eligibility is unverified/);
+  assert.match(markup, /secondary inside your country/);
+  assert.doesNotMatch(markup, /never involve|dwarfs|best rental car cover you own/i);
+  const portalList = app.rank("rentalChase").list;
+  assert.ok(app.rentalInsuranceOptions("rentalChase", portalList).every(x => portalList.some(r => r.c.id === x.c.id)));
+  assert.match(app.rentalInsuranceHTML("rentalCar", []), /No compatible enabled card/);
+  assert.ok(app.overridingPerk("unitedFlights"), "unrelated overrides remain");
+});
+
+test("shipped rates keep retail, drugstore, transportation and rental channels distinct", () => {
+  const state = reset({rent:0});
+  for(const id of ["cfu", "citi-strata-premier"]){
+    state.cards.push({...JSON.parse(JSON.stringify(app.CARD_LIBRARY.find(c => c.id === id))), on:true});
+  }
+  assert.equal(cardResult("retail", "cfu").mult, 1.5);
+  assert.equal(cardResult("drugstore", "cfu").mult, 3);
+  assert.equal(cardResult("transit", "prime").mult, 2);
+  assert.equal(cardResult("travelOther", "prime").mult, 1);
+  assert.equal(cardResult("rentalCar", "citi-strata-premier").mult, 1);
+  assert.equal(cardResult("rentalAgency", "citi-strata-premier").mult, 3);
+  assert.equal(cardResult("rentalCiti", "citi-strata-premier").mult, 10);
+});
+
+test("rental rewards winner without protection stays separate from insurance choices", () => {
+  const state = reset({rent:0});
+  const prime = state.cards.find(c => c.id === "prime");
+  prime.earn.rentalCar = 10;
+  prime.earn.rentalAgency = 8;
+  const list = app.rank("rentalCar").list;
+  assert.equal(list[0].c.id, "prime");
+  assert.equal(app.overridingPerk("rentalCar"), null);
+  assert.ok(app.rentalInsuranceOptions("rentalCar", list).every(x => x.c.id !== "prime"));
+  const markup = app.groupDetailHTML(app.SHEET_GROUPS[0]);
+  assert.match(markup, /Best for rewards: Prime Visa/);
+  assert.doesNotMatch(markup, /Conditional choice: Prime Visa/);
+  assert.match(markup, /percentage points below the rewards winner/);
+});
+
+test("rental coverage distinguishes domestic, international and unknown locations using existing descriptions", () => {
+  const state = reset({rent:0});
+  state.cards.push({...JSON.parse(JSON.stringify(app.CARD_LIBRARY.find(c => c.id === "citi-strata-premier"))), on:true});
+  state.cards.find(c => c.id === "bilt").earn.rentalCar = 9;
+  for(const cat of ["rentalCar", "rentalAgency", "rentalCiti"]){
+    const list = app.rank(cat).list;
+    for(const id of ["bilt", "citi-strata-premier"]){
+      const get = opt => app.rentalInsuranceOptions(cat, list, opt).find(x => x.c.id === id);
+      if(!get({})) continue; // Portal compatibility still applies.
+      assert.equal(get({abroad:false}).primary, false);
+      assert.match(get({abroad:false}).coverage.label, /Secondary for a domestic rental/);
+      assert.equal(get({abroad:true}).primary, true);
+      assert.match(get({abroad:true}).coverage.label, /only if the rental is outside your country of residence/);
+      assert.equal(get({}).primary, false);
+      assert.match(get({}).coverage.label, /unknown/);
+    }
+  }
+  const list = app.rank("rentalCar").list;
+  assert.notEqual(app.rentalInsuranceOptions("rentalCar", list, {abroad:false})[0].c.id, "bilt");
+  assert.equal(app.rentalInsuranceOptions("rentalCar", list, {abroad:true})[0].c.id, "bilt");
+  assert.match(app.rentalInsuranceHTML("rentalCar", list, {abroad:true}), /foreign merchant alone does not establish this/);
+});
+
+test("consolidated rentals show insurance once and retain both channel tradeoffs", () => {
+  const state = reset({rent:0});
+  state.cards.find(c => c.id === "csp").earn.rentalAgency = 4;
+  const before = JSON.stringify(state);
+  const markup = app.groupDetailHTML(app.SHEET_GROUPS[0]);
+  assert.equal((markup.match(/Best for rental insurance/g) || []).length, 1);
+  assert.equal((markup.match(/Eligibility is unverified/g) || []).length, 1);
+  assert.equal((markup.match(/Recorded coverage:/g) || []).length, app.rentalInsuranceOptions("rentalCar", app.rank("rentalCar").list).length);
+  assert.equal((markup.match(/Best for rewards:/g) || []).length, 2);
+  assert.match(markup, /Direct: 2x/);
+  assert.match(markup, /Travel agency: 4x/);
+  assert.match(markup, /Also the rewards winner\./);
+  assert.match(markup, /Ties the rewards winner\./);
+  assert.doesNotMatch(markup, /[; ]0 percentage points below/);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test("Ask render uses the international toggle for insurance without changing rewards", () => {
+  reset({rent:0});
+  const answer = {innerHTML:"", querySelector(){ return null; }};
+  context.document = {getElementById(id){ assert.equal(id, "answer"); return answer; }};
+  app.ask.searchHit = {cat:"rentalCar", mi:null};
+  app.ask.how = "person";
+  app.ask.noMatch = false;
+  try {
+    for(const abroad of [false, true]){
+      app.ask.abroad = abroad;
+      app.renderAnswer();
+      assert.match(answer.innerHTML, /Best for rewards/);
+      assert.match(answer.innerHTML, abroad ? /Potentially primary for an international rental/ : /Secondary for a domestic rental/);
+      assert.match(answer.innerHTML, /Eligibility is unverified/);
+    }
+  } finally {
+    app.ask.abroad = false;
+    app.ask.searchHit = null;
+    delete context.document;
+  }
 });

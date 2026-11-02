@@ -463,7 +463,7 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 "use strict";
-const APP_VERSION = "2.3.0";
+const APP_VERSION = "2.3.2";
 const SCHEMA_VERSION = 3;
 const DATA_VERSION = "2026-08-29";
 const STORE_KEY = "cardpicker.v1";
@@ -740,7 +740,7 @@ const MERCHANTS = [
   {n:"Instacart",       cat:"groceriesOnline", how:"online", note:"Delivery apps code as online grocery, which is a different bonus from walking into the store."},
   {n:"Expedia",         cat:"travelAgency", how:"online", note:"Booking sites generally code as travel agencies, not as a hotel, airline or issuer portal."},
   {n:"Booking.com",     cat:"travelAgency", how:"online", note:"Booking sites generally code as travel agencies, not as a hotel, airline or issuer portal."},
-  {n:"Costco Travel",   cat:"travelAgency", how:"online", note:"Costco Travel generally codes as a travel agency, not an issuer card portal. Visa and Mastercard are accepted. For a rental car, search “Costco Travel rental car” so primary rental coverage is included."},
+  {n:"Costco Travel",   cat:"travelAgency", how:"online", note:"Costco Travel generally codes as a travel agency, not an issuer card portal. Visa and Mastercard are accepted. For a rental car, search “Costco Travel rental car” to compare rental protection separately from rewards."},
   {n:"Parking",         cat:"travelOther", note:"Parking and garages count as travel, which surprises most people."},
   {n:"Tolls",           cat:"travelOther", note:"Toll roads and bridges count as travel too."}
 ];
@@ -1083,12 +1083,54 @@ function plusCeiling(){
   return { card:b, spend: cashNeeded / pct, cash: cashNeeded };
 }
 
+const SHEET_EXCLUDED = new Set([
+  "flightsChase", "hotelsChase", "rentalChase", "flightsCapone", "hotelsCapone", "rentalCapone",
+  "flightsBilt", "hotelsBilt", "biltDining", "hotelsCiti", "rentalCiti", "attractionsCiti"
+]);
+const SHEET_GROUPS = [
+  {id:"rentals", label:"Rental Cars", ids:["rentalCar", "rentalAgency"]},
+  {id:"transportation", label:"Transportation & Other Travel", ids:["transit", "travelOther"]},
+  {id:"shopping", label:"Shopping & Drugstores", ids:["retail", "drugstore"]}
+];
+function sheetCategories(){
+  return CATS.filter(c => !SHEET_EXCLUDED.has(c.id) && (!c.hide || S.showAll))
+    .flatMap(c => {
+      const group = SHEET_GROUPS.find(g => g.ids.includes(c.id));
+      return !group ? [c] : c.id === group.ids[0] ? [{...group, emo:c.emo}] : [];
+    });
+}
+function groupDetailHTML(group){
+  const rentals = group.id === "rentals";
+  const details = group.ids.map(id => {
+    const cat = catById(id), {list} = rank(id);
+    return '<div class="note"><b>' + esc(cat.label) + '</b></div>' +
+      (list.length ? '<div class="note"><b>Best for rewards: ' + esc(list[0].c.nick) +
+       '</b> · ' + headline(list[0]) + ' · ' + fmt(list[0].pct) + '% estimated net reward value</div>' +
+       detailHTML(id, list, winnerFlips(id), rentals) : '<div class="note">No compatible card enabled.</div>');
+  }).join("");
+  if(!rentals) return details;
+  const channels = group.ids.map(id => ({cat:id, label:id === "rentalCar" ? "Direct" : "Travel agency", list:rank(id).list}));
+  return details + rentalInsuranceHTML("rentalCar", channels[0].list, {}, channels);
+}
 function renderSheet(){
   const host = document.getElementById("sheet");
   host.innerHTML = "";
 
-  for(const cat of CATS){
-    if(cat.hide && !S.showAll) continue;
+  for(const cat of sheetCategories()){
+    if(cat.ids){
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = '<button type="button" class="row" aria-expanded="false"><span class="emo">' + cat.emo +
+        '</span><span class="lab"><b>' + esc(cat.label) +
+        '</b><span class="submeta">Compare by purchase type</span></span><span class="chev">&#9656;</span></button>' +
+        '<div class="detail">' + groupDetailHTML(cat) + '</div>';
+      el.querySelector(".row").onclick = e => {
+        el.classList.toggle("open");
+        e.currentTarget.setAttribute("aria-expanded", String(el.classList.contains("open")));
+      };
+      host.appendChild(el);
+      continue;
+    }
     const {list} = rank(cat.id);
     if(!list.length) continue;
     let best = list[0];
@@ -1130,7 +1172,7 @@ function renderSheet(){
 
 function isTie(a, b){ return a && b && Math.abs(a.pct - b.pct) < 0.05; }
 
-function detailHTML(catId, list, flip){
+function detailHTML(catId, list, flip, skipRentalInsurance = false){
   let h = "";
   const meta = catById(catId);
   const cap = plusCeiling();
@@ -1145,7 +1187,8 @@ function detailHTML(catId, list, flip){
          ', which is capped by your rent. Enter your monthly rent in <b>My cards</b> ' +
          'and the app will tell you how far it stretches.</div>';
   }
-  h += perkHTML(catId, list[0] && list[0].c.id);
+  if(!isRental(catId)) h += perkHTML(catId, list[0] && list[0].c.id);
+  else if(!skipRentalInsurance) h += rentalInsuranceHTML(catId, list);
   if(isTie(list[0], list[1])){
     h += '<div class="note">Dead heat between <b>' + esc(list[0].c.nick) + '</b> and <b>' +
          esc(list[1].c.nick) + '</b> — either is fine. The app lists the one with the smaller ' +
@@ -1390,7 +1433,63 @@ function perksFor(cat){
   return S.cards.filter(c => c.on && c.perk && (c.perk[cat] || c.perk[perkCat]))
     .map(c => ({ c, p:c.perk[cat] || c.perk[perkCat] }));
 }
+function isRental(cat){
+  return ["rentalCar", "rentalAgency", "rentalChase", "rentalCapone", "rentalCiti"].includes(cat);
+}
+// Read existing descriptions without changing saved card metadata. The international
+// toggle describes the purchase, not residence or necessarily the rental location.
+function rentalCoverage(perk, opt = {}){
+  const body = String(perk.b || "");
+  if(/secondary inside your country of residence and primary outside it/i.test(body)){
+    if(opt.abroad === true) return {primary:true, label:"Potentially primary for an international rental — only if the rental is outside your country of residence. A foreign merchant alone does not establish this."};
+    if(opt.abroad === false) return {primary:false, label:"Secondary for a domestic rental in your country of residence; primary outside it. Confirm the rental location and your residence."};
+    return {primary:false, label:"Location-dependent: secondary in your country of residence, primary outside it. Rental location and residence are unknown."};
+  }
+  if(/^Primary /i.test(perk.t) || /^Primary /i.test(body)){
+    return {primary:true, label:"Primary cover, if eligible."};
+  }
+  return {primary:false, label:"Coverage type unverified; check the benefits guide."};
+}
+function rentalInsuranceOptions(cat, list, opt = {}){
+  return perksFor(cat).flatMap(x => {
+    const reward = list.find(r => r.c.id === x.c.id);
+    const coverage = rentalCoverage(x.p, opt);
+    return reward ? [{...x, reward, coverage, primary:coverage.primary}] : [];
+  }).sort((a,b) => Number(b.primary) - Number(a.primary) || b.reward.pct - a.reward.pct);
+}
+function rentalRewardTradeoff(reward, list){
+  if(reward.c.id === list[0].c.id) return "Also the rewards winner.";
+  const gap = Math.max(0, list[0].pct - reward.pct);
+  if(gap < 0.005) return "Ties the rewards winner.";
+  return fmt(gap) + " percentage points below the rewards winner.";
+}
+function rentalInsuranceHTML(cat, list, opt = {}, channels = null){
+  const options = rentalInsuranceOptions(cat, list, opt);
+  let h = '<div class="note warn"><b>Best for rental insurance — conditional</b><br>' +
+    'Eligibility is unverified. Confirm the current benefits guide, destination, vehicle, rental duration, ' +
+    'coverage limit and exclusions, payment requirements and declining the rental company’s collision waiver. ' +
+    'For agency bookings, also verify how payment is processed. Primary coverage is preferred here; ' +
+    'among those options, higher reward value breaks the tie. A higher limit alone does not decide.' +
+    (channels ? ' Coverage descriptions apply to both booking types; the choice below uses direct-booking rewards to break ties. Compare agency rewards separately.' : '') + '</div>';
+  if(!options.length) return h + '<div class="note">No compatible enabled card has rental protection recorded. This does not establish that other cards lack coverage.</div>';
+  for(const [i, x] of options.entries()){
+    // Only summarize the recorded coverage sentence; omit legacy marketing comparisons and guarantees.
+    const summary = String(x.p.b || "").split(/\.\s/)[0].split(" — ")[0];
+    h += '<div class="perk"><div class="pt">' + (i === 0 ? 'Conditional choice: ' : 'Alternative: ') + esc(x.c.nick) +
+      '</div><div class="pb">' + esc(x.coverage.label) + ' Recorded coverage: ' + esc(summary) + '. ' +
+      'Verify eligibility before relying on this protection.</div>';
+    for(const channel of channels || [{cat, list}]){
+      const reward = channel.list.find(r => r.c.id === x.c.id);
+      if(!reward) continue;
+      h += '<div class="pb">' + (channel.label ? esc(channel.label) + ': ' : '') + earnLabel(reward) +
+        ' · ' + fmt(reward.pct) + '% estimated net reward value. ' + rentalRewardTradeoff(reward, channel.list) + '</div>';
+    }
+    h += '</div>';
+  }
+  return h;
+}
 function overridingPerk(cat){
+  if(isRental(cat)) return null;
   return perksFor(cat).filter(x => x.p.over)
     .sort((a,b) => finiteNumber(b.p.priority, 0) - finiteNumber(a.p.priority, 0))[0] || null;
 }
@@ -1469,7 +1568,7 @@ function renderAnswer(){
 
   let h = '<div class="best">' +
     '<div class="besthead">' +
-      '<span class="badge">⚡ Best card to use</span>' +
+      '<span class="badge">⚡ ' + (isRental(cat) ? 'Best for rewards' : 'Best card to use') + '</span>' +
       '<span class="badge ret">' + headline(best) + ' earn</span>' +
     '</div>' +
     faceHTML(best) +
@@ -1498,7 +1597,7 @@ function renderAnswer(){
        '</div>';
 
   // Everything that qualifies the answer sits below the card, not inside it.
-  h += perkHTML(cat, best.c.id, true);
+  h += isRental(cat) ? rentalInsuranceHTML(cat, list, {abroad:ask.abroad}) : perkHTML(cat, best.c.id, true);
 
   const cap = plusCeiling();
   if(cap && best.c.id === cap.card.id && best.plus){
