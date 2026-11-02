@@ -538,3 +538,80 @@ test("shipped rates keep retail, drugstore, transportation and rental channels d
   assert.equal(cardResult("rentalAgency", "citi-strata-premier").mult, 3);
   assert.equal(cardResult("rentalCiti", "citi-strata-premier").mult, 10);
 });
+
+test("rental rewards winner without protection stays separate from insurance choices", () => {
+  const state = reset({rent:0});
+  const prime = state.cards.find(c => c.id === "prime");
+  prime.earn.rentalCar = 10;
+  prime.earn.rentalAgency = 8;
+  const list = app.rank("rentalCar").list;
+  assert.equal(list[0].c.id, "prime");
+  assert.equal(app.overridingPerk("rentalCar"), null);
+  assert.ok(app.rentalInsuranceOptions("rentalCar", list).every(x => x.c.id !== "prime"));
+  const markup = app.groupDetailHTML(app.SHEET_GROUPS[0]);
+  assert.match(markup, /Best for rewards: Prime Visa/);
+  assert.doesNotMatch(markup, /Conditional choice: Prime Visa/);
+  assert.match(markup, /percentage points below the rewards winner/);
+});
+
+test("rental coverage distinguishes domestic, international and unknown locations using existing descriptions", () => {
+  const state = reset({rent:0});
+  state.cards.push({...JSON.parse(JSON.stringify(app.CARD_LIBRARY.find(c => c.id === "citi-strata-premier"))), on:true});
+  state.cards.find(c => c.id === "bilt").earn.rentalCar = 9;
+  for(const cat of ["rentalCar", "rentalAgency", "rentalCiti"]){
+    const list = app.rank(cat).list;
+    for(const id of ["bilt", "citi-strata-premier"]){
+      const get = opt => app.rentalInsuranceOptions(cat, list, opt).find(x => x.c.id === id);
+      if(!get({})) continue; // Portal compatibility still applies.
+      assert.equal(get({abroad:false}).primary, false);
+      assert.match(get({abroad:false}).coverage.label, /Secondary for a domestic rental/);
+      assert.equal(get({abroad:true}).primary, true);
+      assert.match(get({abroad:true}).coverage.label, /only if the rental is outside your country of residence/);
+      assert.equal(get({}).primary, false);
+      assert.match(get({}).coverage.label, /unknown/);
+    }
+  }
+  const list = app.rank("rentalCar").list;
+  assert.notEqual(app.rentalInsuranceOptions("rentalCar", list, {abroad:false})[0].c.id, "bilt");
+  assert.equal(app.rentalInsuranceOptions("rentalCar", list, {abroad:true})[0].c.id, "bilt");
+  assert.match(app.rentalInsuranceHTML("rentalCar", list, {abroad:true}), /foreign merchant alone does not establish this/);
+});
+
+test("consolidated rentals show insurance once and retain both channel tradeoffs", () => {
+  const state = reset({rent:0});
+  state.cards.find(c => c.id === "csp").earn.rentalAgency = 4;
+  const before = JSON.stringify(state);
+  const markup = app.groupDetailHTML(app.SHEET_GROUPS[0]);
+  assert.equal((markup.match(/Best for rental insurance/g) || []).length, 1);
+  assert.equal((markup.match(/Eligibility is unverified/g) || []).length, 1);
+  assert.equal((markup.match(/Recorded coverage:/g) || []).length, app.rentalInsuranceOptions("rentalCar", app.rank("rentalCar").list).length);
+  assert.equal((markup.match(/Best for rewards:/g) || []).length, 2);
+  assert.match(markup, /Direct: 2x/);
+  assert.match(markup, /Travel agency: 4x/);
+  assert.match(markup, /Also the rewards winner\./);
+  assert.match(markup, /Ties the rewards winner\./);
+  assert.doesNotMatch(markup, /[; ]0 percentage points below/);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test("Ask render uses the international toggle for insurance without changing rewards", () => {
+  reset({rent:0});
+  const answer = {innerHTML:"", querySelector(){ return null; }};
+  context.document = {getElementById(id){ assert.equal(id, "answer"); return answer; }};
+  app.ask.searchHit = {cat:"rentalCar", mi:null};
+  app.ask.how = "person";
+  app.ask.noMatch = false;
+  try {
+    for(const abroad of [false, true]){
+      app.ask.abroad = abroad;
+      app.renderAnswer();
+      assert.match(answer.innerHTML, /Best for rewards/);
+      assert.match(answer.innerHTML, abroad ? /Potentially primary for an international rental/ : /Secondary for a domestic rental/);
+      assert.match(answer.innerHTML, /Eligibility is unverified/);
+    }
+  } finally {
+    app.ask.abroad = false;
+    app.ask.searchHit = null;
+    delete context.document;
+  }
+});
